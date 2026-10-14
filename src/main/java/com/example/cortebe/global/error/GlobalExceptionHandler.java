@@ -38,10 +38,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ValidErrorResponse> handleValidation(MethodArgumentNotValidException e) {
-        log.warn("{}: {}", e.getClass().getSimpleName(), e.getBindingResult().getFieldErrors());
+        ValidErrorResponse response = ValidErrorResponse.of(GlobalErrorCode.INVALID_INPUT, e.getBindingResult());
+        log.warn("{}: {}", e.getClass().getSimpleName(), response.errors());
         return ResponseEntity
             .status(GlobalErrorCode.INVALID_INPUT.getStatus())
-            .body(ValidErrorResponse.of(GlobalErrorCode.INVALID_INPUT, e.getBindingResult()));
+            .body(response);
     }
 
     @ExceptionHandler({
