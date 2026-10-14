@@ -29,11 +29,14 @@ public record ValidErrorResponse (
     @Builder
     public record FieldErrorDetail(
         String field,
+        String value,
         String reason
     ) {
         public static FieldErrorDetail from(FieldError fieldError) {
             return FieldErrorDetail.builder()
                 .field(fieldError.getField())
+                // 배포 후에는 보안때문에 삭제
+                .value(fieldError.getRejectedValue() != null ? fieldError.getRejectedValue().toString() : null)
                 .reason(fieldError.getDefaultMessage()).build();
         }
     }
