@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -28,6 +30,9 @@ class ProblemSolvedEventListenerIntegrationTest {
 
     @Autowired
     private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private ThreadPoolTaskExecutor applicationTaskExecutor;
 
     @MockitoBean
     private GithubService githubService;
@@ -68,5 +73,16 @@ class ProblemSolvedEventListenerIntegrationTest {
 
         // then
         verify(githubService, after(500).never()).saveSolution(any());
+    }
+
+    @Test
+    void 종료할_때_대기중인_저장을_버리지_않고_기다린다() {
+        // when
+        Object waitForTasks = ReflectionTestUtils.getField(applicationTaskExecutor, "waitForTasksToCompleteOnShutdown");
+        Object awaitTerminationMillis = ReflectionTestUtils.getField(applicationTaskExecutor, "awaitTerminationMillis");
+
+        // then
+        assertThat(waitForTasks).isEqualTo(true);
+        assertThat(awaitTerminationMillis).isEqualTo(30_000L);
     }
 }
