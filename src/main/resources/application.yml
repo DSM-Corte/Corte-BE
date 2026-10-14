@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: Corte-BE
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/corte}
+    username: ${DB_USERNAME:corte}
+    password: ${DB_PASSWORD:corte}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    open-in-view: false
