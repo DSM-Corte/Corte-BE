@@ -22,6 +22,7 @@ services:
       DB_URL: jdbc:mysql://db:3306/corte
       DB_USERNAME: corte
       DB_PASSWORD: corte
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
     depends_on:

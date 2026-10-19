@@ -11,3 +11,7 @@ spring:
   cloud:
     compatibility-verifier:
       enabled: false
+
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1jb3J0ZS1iZS10ZXN0LW9ubHktMzJieXRlcw==
+  access-expiration: 30m
