@@ -38,7 +38,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ValidErrorResponse> handleValidation(MethodArgumentNotValidException e) {
-        log.warn("{}: {}", e.getClass().getSimpleName(), e.getBindingResult().getFieldErrors());
+        log.warn("{}: fields={}", e.getClass().getSimpleName(),
+            e.getBindingResult().getFieldErrors().stream()
+                .map(org.springframework.validation.FieldError::getField).toList());
         return ResponseEntity
             .status(GlobalErrorCode.INVALID_INPUT.getStatus())
             .body(ValidErrorResponse.of(GlobalErrorCode.INVALID_INPUT, e.getBindingResult()));
