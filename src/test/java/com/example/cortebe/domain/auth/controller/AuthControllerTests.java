@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,9 @@ class AuthControllerTests {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Test
     void signup() throws Exception {
@@ -66,5 +70,47 @@ class AuthControllerTests {
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
+    void login() throws Exception {
+        // given
+        userRepository.save(new User("test@corte.com", passwordEncoder.encode("password1234"), "corte"));
+
+        // when & then
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email": "test@corte.com", "password": "password1234"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void loginWithWrongPassword() throws Exception {
+        // given
+        userRepository.save(new User("test@corte.com", passwordEncoder.encode("password1234"), "corte"));
+
+        // when & then
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email": "test@corte.com", "password": "wrong-password"}
+                    """))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("U002"));
+    }
+
+    @Test
+    void loginWithUnknownEmail() throws Exception {
+        // when & then
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email": "none@corte.com", "password": "password1234"}
+                    """))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("U002"));
     }
 }
