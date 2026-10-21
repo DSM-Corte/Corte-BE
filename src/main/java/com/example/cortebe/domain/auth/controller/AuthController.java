@@ -1,6 +1,8 @@
 package com.example.cortebe.domain.auth.controller;
 
+import com.example.cortebe.domain.auth.dto.LoginRequest;
 import com.example.cortebe.domain.auth.dto.SignupRequest;
+import com.example.cortebe.domain.auth.dto.TokenResponse;
 import com.example.cortebe.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,5 +24,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public void signup(@RequestBody @Valid SignupRequest request) {
         authService.signup(request);
+    }
+
+    @PostMapping("/login")
+    public TokenResponse login(@RequestBody @Valid LoginRequest request) {
+        return authService.login(request);
     }
 }
