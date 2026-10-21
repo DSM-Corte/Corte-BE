@@ -2,9 +2,21 @@ package com.example.cortebe.domain.board.dto;
 
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-public record UpdatePostRequest(
-    @Pattern(regexp = "(?s).*\\S.*") @Size(max = 200) String title,
-    @Pattern(regexp = "(?s).*\\S.*") @Size(max = 20000) String content
-) {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+public class UpdatePostRequest {
+
+    @Pattern(regexp = "(?s).*\\S.*")
+    @Size(max = 200)
+    private String title;
+
+    @Pattern(regexp = "(?s).*\\S.*")
+    @Size(max = 20000)
+    private String content;
 }

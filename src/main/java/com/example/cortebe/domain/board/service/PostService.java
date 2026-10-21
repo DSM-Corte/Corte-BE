@@ -33,15 +33,15 @@ public class PostService {
         User author = userRepository.findById(userId)
             .orElseThrow(() -> new CorteException(AuthErrorCode.UNAUTHORIZED));
         Post post = postRepository.save(Post.builder()
-            .title(request.title())
-            .content(request.content())
+            .title(request.getTitle())
+            .content(request.getContent())
             .author(author)
             .build());
-        return toResponse(post);
+        return PostResponse.from(post);
     }
 
     public PostResponse get(Long id) {
-        return toResponse(findPost(id));
+        return PostResponse.from(findPost(id));
     }
 
     public PostPageResponse list(int page, int size) {
@@ -59,10 +59,10 @@ public class PostService {
     @Transactional
     public PostResponse update(Long userId, Long id, UpdatePostRequest request) {
         Post post = findOwnedPost(userId, id);
-        post.update(request.title(), request.content());
+        post.update(request.getTitle(), request.getContent());
         // 변경 감지의 flush 이후 @LastModifiedDate가 반영되도록 즉시 반영한다
         postRepository.flush();
-        return toResponse(post);
+        return PostResponse.from(post);
     }
 
     @Transactional
@@ -72,7 +72,7 @@ public class PostService {
 
     private Post findPost(Long id) {
         return postRepository.findWithAuthorById(id)
-            .orElseThrow(() -> new PostNotFoundException());
+            .orElseThrow(PostNotFoundException::new);
     }
 
     private Post findOwnedPost(Long userId, Long id) {
@@ -81,10 +81,5 @@ public class PostService {
             throw new PostForbiddenException();
         }
         return post;
-    }
-
-    private PostResponse toResponse(Post post) {
-        return new PostResponse(post.getId(), post.getTitle(), post.getContent(),
-            post.getAuthor().getNickname(), post.getCreatedAt(), post.getUpdatedAt());
     }
 }
