@@ -10,3 +10,16 @@ spring:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
     open-in-view: false
+  cloud:
+    # Spring Cloud 2025.1.x는 Boot 4.0 대상이라 Boot 4.1에서 호환성 검사를 끈다
+    compatibility-verifier:
+      enabled: false
+
+github:
+  app:
+    client-id: ${GITHUB_APP_CLIENT_ID:}
+    private-key: ${GITHUB_APP_PRIVATE_KEY:}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: ${JWT_ACCESS_EXPIRATION:30m}
