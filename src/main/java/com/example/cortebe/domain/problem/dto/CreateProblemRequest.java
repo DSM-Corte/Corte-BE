@@ -5,11 +5,14 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+import java.util.Set;
+
 public record CreateProblemRequest(
     @NotBlank @Size(max = 200) String title,
     @NotBlank @Size(max = 20000) String description,
     @NotBlank @Size(max = 50) String category,
     @NotNull @Positive Integer memoryLimitMb,
-    @NotNull @Positive Integer timeLimitMs
+    @NotNull @Positive Integer timeLimitMs,
+    @Size(max = 10) Set<@NotBlank @Size(max = 30) String> tags
 ) {
 }

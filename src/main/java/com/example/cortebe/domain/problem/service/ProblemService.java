@@ -15,6 +15,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 public class ProblemService {
@@ -29,6 +34,7 @@ public class ProblemService {
             .category(request.category())
             .memoryLimitMb(request.memoryLimitMb())
             .timeLimitMs(request.timeLimitMs())
+            .tags(normalizeTags(request.tags()))
             .build());
         return toResponse(problem);
     }
@@ -39,21 +45,35 @@ public class ProblemService {
     }
 
     @Transactional(readOnly = true)
-    public ProblemPageResponse list(int page, int size, String category) {
+    public ProblemPageResponse list(int page, int size, String category, String tag) {
         if (page < 0 || size < 1 || size > 100
             || (category != null && (category.isBlank() || category.length() > 50))) {
             throw new CorteException(GlobalErrorCode.INVALID_INPUT);
         }
+        if (tag != null && (tag.isBlank() || tag.length() > 30)) {
+            throw new CorteException(GlobalErrorCode.INVALID_INPUT);
+        }
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<ProblemRepository.Summary> problems = category == null
-            ? problemRepository.findAllBy(pageRequest)
-            : problemRepository.findAllByCategory(category, pageRequest);
+        Page<ProblemRepository.Summary> problems;
+        if (tag != null) {
+            problems = problemRepository.findAllByTag(category, tag.strip(), pageRequest);
+        } else {
+            problems = category == null
+                ? problemRepository.findAllBy(pageRequest)
+                : problemRepository.findAllByCategory(category, pageRequest);
+        }
+        Map<Long, Set<String>> tagsByProblem = new HashMap<>();
+        if (!problems.isEmpty()) {
+            problemRepository.findTagsByProblemIds(problems.getContent().stream().map(ProblemRepository.Summary::getId).toList())
+                .forEach(row -> tagsByProblem.computeIfAbsent(row.getProblemId(), id -> new LinkedHashSet<>()).add(row.getTag()));
+        }
         return ProblemPageResponse.builder()
             .content(problems.getContent().stream()
                 .map(problem -> ProblemPageResponse.Summary.builder()
                     .id(problem.getId())
                     .title(problem.getTitle())
                     .category(problem.getCategory())
+                    .tags(tagsByProblem.getOrDefault(problem.getId(), Set.of()))
                     .build()).toList())
             .page(problems.getNumber())
             .size(problems.getSize())
@@ -66,7 +86,7 @@ public class ProblemService {
     public ProblemResponse update(Long id, UpdateProblemRequest request) {
         Problem problem = findProblem(id);
         problem.update(request.title(), request.description(), request.category(), request.memoryLimitMb(),
-            request.timeLimitMs());
+            request.timeLimitMs(), normalizeTags(request.tags()));
         return toResponse(problem);
     }
 
@@ -88,6 +108,16 @@ public class ProblemService {
             .category(problem.getCategory())
             .memoryLimitMb(problem.getMemoryLimitMb())
             .timeLimitMs(problem.getTimeLimitMs())
+            .tags(new LinkedHashSet<>(problem.getTags()))
             .build();
+    }
+
+    private Set<String> normalizeTags(Set<String> tags) {
+        if (tags == null) {
+            return null;
+        }
+        Set<String> normalized = new LinkedHashSet<>();
+        tags.forEach(tag -> normalized.add(tag.strip()));
+        return normalized;
     }
 }
