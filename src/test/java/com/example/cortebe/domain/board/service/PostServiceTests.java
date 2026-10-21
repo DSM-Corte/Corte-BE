@@ -3,7 +3,8 @@ package com.example.cortebe.domain.board.service;
 import com.example.cortebe.domain.board.dto.CreatePostRequest;
 import com.example.cortebe.domain.board.dto.UpdatePostRequest;
 import com.example.cortebe.domain.board.entity.Post;
-import com.example.cortebe.domain.board.exception.BoardErrorCode;
+import com.example.cortebe.domain.board.exception.PostForbiddenException;
+import com.example.cortebe.domain.board.exception.PostNotFoundException;
 import com.example.cortebe.domain.board.repository.PostRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
@@ -69,8 +70,7 @@ class PostServiceTests {
         when(postRepository.findWithAuthorById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.get(1L))
-            .isInstanceOfSatisfying(CorteException.class,
-                e -> assertThat(e.getErrorCode()).isEqualTo(BoardErrorCode.POST_NOT_FOUND));
+            .isInstanceOf(PostNotFoundException.class);
     }
 
     @Test
@@ -99,8 +99,7 @@ class PostServiceTests {
         when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postService.update(2L, 10L, new UpdatePostRequest("해킹", null)))
-            .isInstanceOfSatisfying(CorteException.class,
-                e -> assertThat(e.getErrorCode()).isEqualTo(BoardErrorCode.POST_FORBIDDEN));
+            .isInstanceOf(PostForbiddenException.class);
         assertThat(post.getTitle()).isEqualTo("제목");
     }
 
@@ -110,8 +109,7 @@ class PostServiceTests {
         when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postService.delete(2L, 10L))
-            .isInstanceOfSatisfying(CorteException.class,
-                e -> assertThat(e.getErrorCode()).isEqualTo(BoardErrorCode.POST_FORBIDDEN));
+            .isInstanceOf(PostForbiddenException.class);
         verify(postRepository, never()).delete(any());
     }
 

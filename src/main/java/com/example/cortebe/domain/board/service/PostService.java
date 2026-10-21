@@ -5,7 +5,8 @@ import com.example.cortebe.domain.board.dto.PostPageResponse;
 import com.example.cortebe.domain.board.dto.PostResponse;
 import com.example.cortebe.domain.board.dto.UpdatePostRequest;
 import com.example.cortebe.domain.board.entity.Post;
-import com.example.cortebe.domain.board.exception.BoardErrorCode;
+import com.example.cortebe.domain.board.exception.PostForbiddenException;
+import com.example.cortebe.domain.board.exception.PostNotFoundException;
 import com.example.cortebe.domain.board.repository.PostRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
@@ -67,13 +68,13 @@ public class PostService {
 
     private Post findPost(Long id) {
         return postRepository.findWithAuthorById(id)
-            .orElseThrow(() -> new CorteException(BoardErrorCode.POST_NOT_FOUND));
+            .orElseThrow(() -> new PostNotFoundException());
     }
 
     private Post findOwnedPost(Long userId, Long id) {
         Post post = findPost(id);
         if (!post.isWrittenBy(userId)) {
-            throw new CorteException(BoardErrorCode.POST_FORBIDDEN);
+            throw new PostForbiddenException();
         }
         return post;
     }
