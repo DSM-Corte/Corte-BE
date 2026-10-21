@@ -84,7 +84,7 @@ class PostServiceTests {
 
     @Test
     void updateByAuthorKeepsOmittedFields() {
-        Post post = new Post("원래 제목", "원래 본문", userWithId(1L, "사용자1"));
+        Post post = Post.builder().title("원래 제목").content("원래 본문").author(userWithId(1L, "사용자1")).build();
         when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
 
         var response = postService.update(1L, 10L, new UpdatePostRequest("새 제목", null));
@@ -95,7 +95,7 @@ class PostServiceTests {
 
     @Test
     void updateByNonAuthorIsForbidden() {
-        Post post = new Post("제목", "본문", userWithId(1L, "사용자1"));
+        Post post = Post.builder().title("제목").content("본문").author(userWithId(1L, "사용자1")).build();
         when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postService.update(2L, 10L, new UpdatePostRequest("해킹", null)))
@@ -105,7 +105,7 @@ class PostServiceTests {
 
     @Test
     void deleteByNonAuthorIsForbidden() {
-        Post post = new Post("제목", "본문", userWithId(1L, "사용자1"));
+        Post post = Post.builder().title("제목").content("본문").author(userWithId(1L, "사용자1")).build();
         when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postService.delete(2L, 10L))
@@ -115,7 +115,7 @@ class PostServiceTests {
 
     @Test
     void deleteByAuthorDeletesPost() {
-        Post post = new Post("제목", "본문", userWithId(1L, "사용자1"));
+        Post post = Post.builder().title("제목").content("본문").author(userWithId(1L, "사용자1")).build();
         when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
 
         postService.delete(1L, 10L);

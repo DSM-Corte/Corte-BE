@@ -32,7 +32,11 @@ public class PostService {
     public PostResponse create(Long userId, CreatePostRequest request) {
         User author = userRepository.findById(userId)
             .orElseThrow(() -> new CorteException(AuthErrorCode.UNAUTHORIZED));
-        Post post = postRepository.save(new Post(request.title(), request.content(), author));
+        Post post = postRepository.save(Post.builder()
+            .title(request.title())
+            .content(request.content())
+            .author(author)
+            .build());
         return toResponse(post);
     }
 
@@ -56,7 +60,7 @@ public class PostService {
     public PostResponse update(Long userId, Long id, UpdatePostRequest request) {
         Post post = findOwnedPost(userId, id);
         post.update(request.title(), request.content());
-        // 변경 감지의 flush 이후 @UpdateTimestamp가 반영되도록 즉시 반영한다
+        // 변경 감지의 flush 이후 @LastModifiedDate가 반영되도록 즉시 반영한다
         postRepository.flush();
         return toResponse(post);
     }
