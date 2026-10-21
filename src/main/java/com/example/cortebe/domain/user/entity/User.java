@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -20,15 +21,16 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 60)
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private String nickname;
 
+    @Builder
     public User(String email, String password, String nickname) {
         this.email = email;
         this.password = password;
