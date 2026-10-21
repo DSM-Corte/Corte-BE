@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 class CorteBeApplicationTests {
 
     @Test
-    void 애플리케이션_컨텍스트가_정상적으로_로드된다() {
+    void contextLoads() {
     }
 
 }

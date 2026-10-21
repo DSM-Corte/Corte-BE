@@ -7,6 +7,7 @@ import com.example.cortebe.global.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,6 +27,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/problems", "/api/problems/**").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/api/problems", "/api/problems/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/problems", "/api/problems/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/problems", "/api/problems/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/problems", "/api/problems/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, e) -> {

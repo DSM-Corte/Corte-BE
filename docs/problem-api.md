@@ -20,8 +20,25 @@
 태그는 문자열 배열로 전달한다. 앞뒤 공백과 중복은 제거하며, 생성 시 생략하거나 null이면
 빈 배열로 저장한다. 별도 태그 등록 API 없이 문제 생성·수정 시 함께 관리한다.
 
-문제 API는 기존 JWT 인증 설정을 따른다. 아래 요청에는
-`Authorization: Bearer <access-token>` 헤더가 필요하다.
+문제 목록·상세 조회와 HEAD 요청은 로그인 없이 사용할 수 있다.
+생성·수정·삭제는 관리자 JWT가 필요하며 `Authorization: Bearer <access-token>` 헤더로 전달한다.
+
+| 요청 | 권한 |
+| --- | --- |
+| GET /api/problems, GET /api/problems/{id}, HEAD | 공개 |
+| POST /api/problems | ADMIN |
+| PATCH /api/problems/{id} | ADMIN |
+| DELETE /api/problems/{id} | ADMIN |
+
+비로그인 사용자의 쓰기 요청은 기존 인증 오류 응답(401, A001)을 반환하고,
+로그인했지만 관리자가 아닌 사용자의 쓰기 요청은 Spring Security의 기본 403 처리를 따른다.
+요청 본문이나 임의 헤더에 role=ADMIN을 넣어서는 권한을 얻을 수 없다.
+
+`JwtProvider.createAccessToken(userId)`는 USER 역할로 발급한다.
+서버에서 관리자임을 확인한 뒤 `createAccessToken(userId, Role.ADMIN)`으로 발급한 서명된 토큰만
+관리자 권한을 가진다. 역할 정보가 없는 기존 JWT는 USER로 취급한다.
+현재 로그인·관리자 지정 API나 DB 역할 관리 기능은 구현하지 않았으므로,
+향후 로그인 기능에서 신뢰할 수 있는 서버 측 역할 정보와 연결해야 한다.
 
 ## 생성
 
@@ -114,7 +131,8 @@ DB에서 실제로 삭제한다. 없는 ID를 조회·수정·삭제하면 `404`
 
 ## 현재 정책과 검증 범위
 
-- 기존 JWT 인증 설정을 유지한다. 이번 태그 작업에서 작성자·관리자 권한 정책은 변경하지 않았다.
+- 문제 API의 공개 조회·관리자 쓰기 권한은 SecurityConfig에서 제어한다.
+  다른 API의 인증 규칙과 공통 로그·오류 응답 처리는 유지한다.
 - 제출 기록 등 연결된 도메인은 아직 없다. 연결된 데이터의 보존 정책은 별도로 정해야 한다.
 - 생성·수정·삭제는 각각 트랜잭션으로 처리한다. 버전 검사나 명시적 락은 추가하지 않아,
   동시 수정 시 나중에 저장된 변경이 앞선 변경을 덮어쓸 수 있다.
@@ -122,6 +140,7 @@ DB에서 실제로 삭제한다. 없는 ID를 조회·수정·삭제하면 `404`
   H2 테스트는 MySQL의 SQL·락·격리 수준과 완전히 같음을 보장하지 않는다.
 - 상세·목록 조회 Service 메서드에 `@Transactional(readOnly = true)`를 명시한다.
 - 문제 Entity와 응답 DTO는 Lombok Builder로 생성하고 DTO 변환은 Service에서 수행한다.
+- 생성·수정 요청 DTO는 일반 클래스와 Getter를 사용하고, 응답 DTO는 record를 유지한다.
 - 카테고리·ID 복합 인덱스를 선언했다. 실제 MySQL 실행 계획과 성능은 별도 검증이 필요하다.
 - 태그는 `problem_tags(problem_id, tag)` 컬렉션 테이블에 저장한다.
   문제·태그 조합의 유니크 제약과 태그·문제 ID 인덱스를 선언했다.

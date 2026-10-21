@@ -29,12 +29,12 @@ public class ProblemService {
     @Transactional
     public ProblemResponse create(CreateProblemRequest request) {
         Problem problem = problemRepository.save(Problem.builder()
-            .title(request.title())
-            .description(request.description())
-            .category(request.category())
-            .memoryLimitMb(request.memoryLimitMb())
-            .timeLimitMs(request.timeLimitMs())
-            .tags(normalizeTags(request.tags()))
+            .title(request.getTitle())
+            .description(request.getDescription())
+            .category(request.getCategory())
+            .memoryLimitMb(request.getMemoryLimitMb())
+            .timeLimitMs(request.getTimeLimitMs())
+            .tags(normalizeTags(request.getTags()))
             .build());
         return toResponse(problem);
     }
@@ -85,8 +85,8 @@ public class ProblemService {
     @Transactional
     public ProblemResponse update(Long id, UpdateProblemRequest request) {
         Problem problem = findProblem(id);
-        problem.update(request.title(), request.description(), request.category(), request.memoryLimitMb(),
-            request.timeLimitMs(), normalizeTags(request.tags()));
+        problem.update(request.getTitle(), request.getDescription(), request.getCategory(), request.getMemoryLimitMb(),
+            request.getTimeLimitMs(), normalizeTags(request.getTags()));
         return toResponse(problem);
     }
 
