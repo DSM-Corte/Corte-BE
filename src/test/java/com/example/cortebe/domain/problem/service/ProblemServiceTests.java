@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Optional;
 import java.util.Set;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProblemServiceTests {
 
+    private final JsonMapper objectMapper = JsonMapper.builder().build();
+
     @Mock
     private ProblemRepository problemRepository;
 
@@ -35,8 +38,11 @@ class ProblemServiceTests {
     void 문제를_생성하면_카테고리와_실행_제한을_반환한다() {
         when(problemRepository.save(any(Problem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = problemService.create(new CreateProblemRequest(
-            "Sum", "Add numbers", "구현", 256, 1000, Set.of(" 배열 ", "배열", "정렬")));
+        CreateProblemRequest request = objectMapper.readValue("""
+            {"title":"Sum","description":"Add numbers","category":"구현",
+             "memoryLimitMb":256,"timeLimitMs":1000,"tags":[" 배열 ","배열","정렬"]}
+            """, CreateProblemRequest.class);
+        var response = problemService.create(request);
 
         assertEquals("Sum", response.title());
         assertEquals("구현", response.category());
@@ -51,8 +57,10 @@ class ProblemServiceTests {
             .category("구현").memoryLimitMb(256).timeLimitMs(1000).tags(Set.of("배열")).build();
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem));
 
-        var response = problemService.update(1L,
-            new UpdateProblemRequest("Changed", null, "그래프", null, 2000, null));
+        UpdateProblemRequest request = objectMapper.readValue("""
+            {"title":"Changed","category":"그래프","timeLimitMs":2000}
+            """, UpdateProblemRequest.class);
+        var response = problemService.update(1L, request);
 
         assertEquals("Changed", response.title());
         assertEquals("Description", response.description());
@@ -70,7 +78,7 @@ class ProblemServiceTests {
             assertThrows(CorteException.class, () -> problemService.get(99L)).getErrorCode());
         assertEquals(GlobalErrorCode.RESOURCE_NOT_FOUND,
             assertThrows(CorteException.class, () -> problemService.update(99L,
-                new UpdateProblemRequest("Changed", null, null, null, null, null))).getErrorCode());
+                new UpdateProblemRequest())).getErrorCode());
         assertEquals(GlobalErrorCode.RESOURCE_NOT_FOUND,
             assertThrows(CorteException.class, () -> problemService.delete(99L)).getErrorCode());
     }
@@ -105,11 +113,11 @@ class ProblemServiceTests {
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem));
 
         var replaced = problemService.update(1L,
-            new UpdateProblemRequest(null, null, null, null, null, Set.of(" 정렬 ", "정렬")));
+            objectMapper.readValue("{\"tags\":[\" 정렬 \",\"정렬\"]}", UpdateProblemRequest.class));
         assertEquals(Set.of("정렬"), replaced.tags());
 
         var cleared = problemService.update(1L,
-            new UpdateProblemRequest(null, null, null, null, null, Set.of()));
+            objectMapper.readValue("{\"tags\":[]}", UpdateProblemRequest.class));
         assertEquals(Set.of(), cleared.tags());
         assertEquals(Set.of("정렬"), replaced.tags());
     }

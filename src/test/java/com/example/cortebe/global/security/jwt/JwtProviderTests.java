@@ -1,6 +1,7 @@
 package com.example.cortebe.global.security.jwt;
 
-import com.example.cortebe.global.error.exception.CorteException;
+import com.example.cortebe.global.security.exception.InvalidTokenException;
+import com.example.cortebe.global.security.exception.ExpiredTokenException;
 import com.example.cortebe.global.security.exception.AuthErrorCode;
 import com.example.cortebe.global.security.Role;
 import io.jsonwebtoken.Jwts;
@@ -31,7 +32,7 @@ class JwtProviderTests {
     @Test
     void invalidToken() {
         assertThatThrownBy(() -> jwtProvider.getUserId("invalid.token.value"))
-            .isInstanceOf(CorteException.class)
+            .isInstanceOf(InvalidTokenException.class)
             .extracting("errorCode")
             .isEqualTo(AuthErrorCode.INVALID_TOKEN);
     }
@@ -42,7 +43,7 @@ class JwtProviderTests {
         String token = expiredProvider.createAccessToken(1L);
 
         assertThatThrownBy(() -> jwtProvider.getUserId(token))
-            .isInstanceOf(CorteException.class)
+            .isInstanceOf(ExpiredTokenException.class)
             .extracting("errorCode")
             .isEqualTo(AuthErrorCode.EXPIRED_TOKEN);
     }
@@ -80,7 +81,7 @@ class JwtProviderTests {
             .encodeToString(payload.getBytes(StandardCharsets.UTF_8)) + "." + parts[2];
 
         assertThatThrownBy(() -> jwtProvider.getAuthentication(tampered))
-            .isInstanceOf(CorteException.class).extracting("errorCode").isEqualTo(AuthErrorCode.INVALID_TOKEN);
+            .isInstanceOf(InvalidTokenException.class).extracting("errorCode").isEqualTo(AuthErrorCode.INVALID_TOKEN);
     }
 
     @Test
@@ -89,7 +90,7 @@ class JwtProviderTests {
             String token = Jwts.builder().subject("1").claim("role", role)
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET))).compact();
             assertThatThrownBy(() -> jwtProvider.getAuthentication(token))
-                .isInstanceOf(CorteException.class).extracting("errorCode").isEqualTo(AuthErrorCode.INVALID_TOKEN);
+                .isInstanceOf(InvalidTokenException.class).extracting("errorCode").isEqualTo(AuthErrorCode.INVALID_TOKEN);
         }
     }
 
@@ -99,6 +100,6 @@ class JwtProviderTests {
         String token = expiredProvider.createAccessToken(1L, Role.ADMIN);
 
         assertThatThrownBy(() -> jwtProvider.getAuthentication(token))
-            .isInstanceOf(CorteException.class).extracting("errorCode").isEqualTo(AuthErrorCode.EXPIRED_TOKEN);
+            .isInstanceOf(ExpiredTokenException.class).extracting("errorCode").isEqualTo(AuthErrorCode.EXPIRED_TOKEN);
     }
 }

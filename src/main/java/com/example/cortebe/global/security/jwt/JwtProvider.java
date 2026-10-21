@@ -1,7 +1,7 @@
 package com.example.cortebe.global.security.jwt;
 
-import com.example.cortebe.global.error.exception.CorteException;
-import com.example.cortebe.global.security.exception.AuthErrorCode;
+import com.example.cortebe.global.security.exception.InvalidTokenException;
+import com.example.cortebe.global.security.exception.ExpiredTokenException;
 import com.example.cortebe.global.security.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -63,7 +63,7 @@ public class JwtProvider {
             return new UsernamePasswordAuthenticationToken(userId, null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
         } catch (JwtException | IllegalArgumentException e) {
-            throw new CorteException(AuthErrorCode.INVALID_TOKEN);
+            throw new InvalidTokenException();
         }
     }
 
@@ -71,7 +71,7 @@ public class JwtProvider {
         try {
             return Long.valueOf(claims.getSubject());
         } catch (IllegalArgumentException e) {
-            throw new CorteException(AuthErrorCode.INVALID_TOKEN);
+            throw new InvalidTokenException();
         }
     }
 
@@ -83,9 +83,9 @@ public class JwtProvider {
                 .parseSignedClaims(token)
                 .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new CorteException(AuthErrorCode.EXPIRED_TOKEN);
+            throw new ExpiredTokenException();
         } catch (JwtException | IllegalArgumentException e) {
-            throw new CorteException(AuthErrorCode.INVALID_TOKEN);
+            throw new InvalidTokenException();
         }
     }
 }
