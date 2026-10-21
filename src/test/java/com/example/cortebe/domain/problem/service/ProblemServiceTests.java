@@ -31,57 +31,61 @@ class ProblemServiceTests {
     private ProblemService problemService;
 
     @Test
-    void createPreservesExamplesIncludingWhitespace() {
+    void 문제를_생성하면_카테고리와_실행_제한을_반환한다() {
         when(problemRepository.save(any(Problem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = problemService.create(new CreateProblemRequest(
-            "Sum", "Add numbers", "Two integers", "Their sum", "1 2\n", "3\n"));
+            "Sum", "Add numbers", "구현", 256, 1000));
 
         assertEquals("Sum", response.title());
-        assertEquals("1 2\n", response.exampleInput());
-        assertEquals("3\n", response.exampleOutput());
+        assertEquals("구현", response.category());
+        assertEquals(256, response.memoryLimitMb());
+        assertEquals(1000, response.timeLimitMs());
     }
 
     @Test
-    void patchPreservesOmittedFieldsAndAllowsClearingExamples() {
-        Problem problem = new Problem("Original", "Description", "Input", "Output", "1", "2");
+    void 부분_수정은_전달된_필드만_바꾸고_나머지는_유지한다() {
+        Problem problem = Problem.builder().title("Original").description("Description")
+            .category("구현").memoryLimitMb(256).timeLimitMs(1000).build();
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem));
 
         var response = problemService.update(1L,
-            new UpdateProblemRequest("Changed", null, null, null, "", null));
+            new UpdateProblemRequest("Changed", null, "그래프", null, 2000));
 
         assertEquals("Changed", response.title());
         assertEquals("Description", response.description());
-        assertEquals("Input", response.inputFormat());
-        assertEquals("Output", response.outputFormat());
-        assertEquals("", response.exampleInput());
-        assertEquals("2", response.exampleOutput());
+        assertEquals("그래프", response.category());
+        assertEquals(256, response.memoryLimitMb());
+        assertEquals(2000, response.timeLimitMs());
     }
 
     @Test
-    void missingProblemIsNotFoundForGetUpdateAndDelete() {
+    void 없는_문제를_조회_수정_삭제하면_찾을_수_없음_오류가_발생한다() {
         when(problemRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertEquals(GlobalErrorCode.RESOURCE_NOT_FOUND,
             assertThrows(CorteException.class, () -> problemService.get(99L)).getErrorCode());
         assertEquals(GlobalErrorCode.RESOURCE_NOT_FOUND,
             assertThrows(CorteException.class, () -> problemService.update(99L,
-                new UpdateProblemRequest("Changed", null, null, null, null, null))).getErrorCode());
+                new UpdateProblemRequest("Changed", null, null, null, null))).getErrorCode());
         assertEquals(GlobalErrorCode.RESOURCE_NOT_FOUND,
             assertThrows(CorteException.class, () -> problemService.delete(99L)).getErrorCode());
     }
 
     @Test
-    void invalidPaginationDoesNotQueryDatabase() {
-        assertThrows(CorteException.class, () -> problemService.list(-1, 20));
-        assertThrows(CorteException.class, () -> problemService.list(0, 0));
-        assertThrows(CorteException.class, () -> problemService.list(0, 101));
+    void 잘못된_페이지나_카테고리로_조회하면_DB에_접근하지_않는다() {
+        assertThrows(CorteException.class, () -> problemService.list(-1, 20, null));
+        assertThrows(CorteException.class, () -> problemService.list(0, 0, null));
+        assertThrows(CorteException.class, () -> problemService.list(0, 101, null));
+        assertThrows(CorteException.class, () -> problemService.list(0, 20, " "));
+        assertThrows(CorteException.class, () -> problemService.list(0, 20, "x".repeat(51)));
         verifyNoInteractions(problemRepository);
     }
 
     @Test
-    void deleteRemovesExistingProblem() {
-        Problem problem = new Problem("Title", "Description", "Input", "Output", "", "");
+    void 존재하는_문제를_삭제한다() {
+        Problem problem = Problem.builder().title("Title").description("Description")
+            .category("구현").memoryLimitMb(256).timeLimitMs(1000).build();
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem));
 
         problemService.delete(1L);

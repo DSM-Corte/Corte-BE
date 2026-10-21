@@ -5,14 +5,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "problems")
+@Table(name = "problems", indexes = @Index(name = "idx_problems_category_id", columnList = "category,id"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Problem {
@@ -28,51 +30,41 @@ public class Problem {
     @Column(nullable = false)
     private String description;
 
-    @Lob
-    @Column(nullable = false)
-    private String inputFormat;
+    @Column(nullable = false, length = 50)
+    private String category;
 
-    @Lob
     @Column(nullable = false)
-    private String outputFormat;
+    private Integer memoryLimitMb;
 
-    @Lob
     @Column(nullable = false)
-    private String exampleInput;
+    private Integer timeLimitMs;
 
-    @Lob
-    @Column(nullable = false)
-    private String exampleOutput;
-
-    public Problem(String title, String description, String inputFormat, String outputFormat,
-                   String exampleInput, String exampleOutput) {
+    @Builder
+    private Problem(String title, String description, String category, Integer memoryLimitMb,
+                    Integer timeLimitMs) {
         this.title = title;
         this.description = description;
-        this.inputFormat = inputFormat;
-        this.outputFormat = outputFormat;
-        this.exampleInput = exampleInput;
-        this.exampleOutput = exampleOutput;
+        this.category = category;
+        this.memoryLimitMb = memoryLimitMb;
+        this.timeLimitMs = timeLimitMs;
     }
 
-    public void update(String title, String description, String inputFormat, String outputFormat,
-                       String exampleInput, String exampleOutput) {
+    public void update(String title, String description, String category, Integer memoryLimitMb,
+                       Integer timeLimitMs) {
         if (title != null) {
             this.title = title;
         }
         if (description != null) {
             this.description = description;
         }
-        if (inputFormat != null) {
-            this.inputFormat = inputFormat;
+        if (category != null) {
+            this.category = category;
         }
-        if (outputFormat != null) {
-            this.outputFormat = outputFormat;
+        if (memoryLimitMb != null) {
+            this.memoryLimitMb = memoryLimitMb;
         }
-        if (exampleInput != null) {
-            this.exampleInput = exampleInput;
-        }
-        if (exampleOutput != null) {
-            this.exampleOutput = exampleOutput;
+        if (timeLimitMs != null) {
+            this.timeLimitMs = timeLimitMs;
         }
     }
 }

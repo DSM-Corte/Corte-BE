@@ -1,12 +1,14 @@
 package com.example.cortebe.domain.problem.dto;
 
+import lombok.Builder;
+
+@Builder
 public record ProblemResponse(
     Long id,
     String title,
     String description,
-    String inputFormat,
-    String outputFormat,
-    String exampleInput,
-    String exampleOutput
+    String category,
+    Integer memoryLimitMb,
+    Integer timeLimitMs
 ) {
 }

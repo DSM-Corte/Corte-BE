@@ -20,7 +20,7 @@ class GlobalExceptionFilterTests {
     private final GlobalExceptionFilter filter = new GlobalExceptionFilter(objectMapper);
 
     @Test
-    void committedResponsePreservesOriginalExceptionAndBody() throws IOException {
+    void 전송이_시작된_응답과_기존_예외를_유지한다() throws IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         response.getWriter().write("already sent");
@@ -36,7 +36,7 @@ class GlobalExceptionFilterTests {
     }
 
     @Test
-    void uncommittedResponseReplacesPartialBodyWithBusinessError() throws Exception {
+    void 전송_전_응답_본문을_비즈니스_오류_응답으로_교체한다() throws Exception {
         MockHttpServletResponse response = new MockHttpServletResponse();
         response.getWriter().write("partial");
 
@@ -49,7 +49,7 @@ class GlobalExceptionFilterTests {
     }
 
     @Test
-    void unexpectedExceptionDoesNotExposeInternalMessage() throws Exception {
+    void 예상하지_못한_예외의_내부_메시지를_응답에_노출하지_않는다() throws Exception {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilter(new MockHttpServletRequest(), response, (req, res) -> {

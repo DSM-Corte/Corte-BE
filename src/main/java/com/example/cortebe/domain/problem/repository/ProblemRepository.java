@@ -7,9 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProblemRepository extends JpaRepository<Problem, Long> {
     Page<Summary> findAllBy(Pageable pageable);
+    Page<Summary> findAllByCategory(String category, Pageable pageable);
 
     interface Summary {
         Long getId();
         String getTitle();
+        String getCategory();
     }
 }

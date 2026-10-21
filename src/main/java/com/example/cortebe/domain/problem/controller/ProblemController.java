@@ -40,8 +40,9 @@ public class ProblemController {
 
     @GetMapping
     public ProblemPageResponse list(@RequestParam(defaultValue = "0") int page,
-                                    @RequestParam(defaultValue = "20") int size) {
-        return problemService.list(page, size);
+                                    @RequestParam(defaultValue = "20") int size,
+                                    @RequestParam(required = false) String category) {
+        return problemService.list(page, size, category);
     }
 
     @PatchMapping("/{id}")

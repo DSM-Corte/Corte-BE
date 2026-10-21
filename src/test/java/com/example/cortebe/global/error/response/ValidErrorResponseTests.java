@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ValidErrorResponseTests {
 
     @Test
-    void validationResponseDoesNotEchoRejectedValue() {
+    void 검증_오류_응답에_거절된_입력값을_노출하지_않는다() {
         BeanPropertyBindingResult binding = new BeanPropertyBindingResult(new Object(), "request");
         binding.addError(new FieldError("request", "password", "secret-value", false,
             null, null, "invalid format"));
