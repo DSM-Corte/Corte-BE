@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,6 +30,7 @@ public class User {
     @Column(nullable = false, length = 20)
     private String nickname;
 
+    @Builder
     public User(String email, String password, String nickname) {
         this.email = email;
         this.password = password;
