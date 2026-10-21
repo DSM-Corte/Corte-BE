@@ -47,8 +47,8 @@ class PostControllerTests {
 
     @BeforeEach
     void setUp() {
-        authorToken = bearer(userRepository.save(new User("a@corte.com", "password", "사용자1")));
-        otherToken = bearer(userRepository.save(new User("b@corte.com", "password", "사용자2")));
+        authorToken = bearer(userRepository.save(User.builder().email("a@corte.com").password("password").nickname("사용자1").build()));
+        otherToken = bearer(userRepository.save(User.builder().email("b@corte.com").password("password").nickname("사용자2").build()));
     }
 
     private String bearer(User user) {

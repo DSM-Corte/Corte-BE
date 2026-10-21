@@ -38,7 +38,7 @@ class PostServiceTests {
     private PostService postService;
 
     private User userWithId(Long id, String nickname) {
-        User user = new User(nickname + "@corte.com", "password", nickname);
+        User user = User.builder().email(nickname + "@corte.com").password("password").nickname(nickname).build();
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }
