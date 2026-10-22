@@ -5,6 +5,7 @@ import com.example.cortebe.global.error.exception.GlobalErrorCode;
 import com.example.cortebe.global.error.exception.CorteException;
 import com.example.cortebe.global.error.response.ErrorResponse;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,14 @@ public class GlobalExceptionFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
         try {
             filterChain.doFilter(request, response);
         } catch (Exception e) {
+            if (response.isCommitted()) {
+                log.error("Exception after response committed: {} {}", request.getMethod(), request.getRequestURI(), e);
+                throw e;
+            }
             switch (e) {
                 case CorteException ce -> {
                     log.warn("{}: {} {}", ce.getClass().getSimpleName(), ce.getErrorCode().getStatus(), ce.getErrorCode().getMessage());
