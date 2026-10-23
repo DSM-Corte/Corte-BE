@@ -73,54 +73,18 @@ global/
 
 ## 2. Conventions
 
-### 네이밍·코드 스타일
+컨벤션은 디렉터리별 AGENTS.md에 있다. 파일을 수정하기 전에 그 경로에서 가장 가까운 AGENTS.md를 읽는다.
+도구가 하위 AGENTS.md를 자동으로 읽지 않더라도 직접 열어 읽는다.
 
-- 패키지 소문자, 타입 PascalCase, 메서드·필드 camelCase, 상수·enum 값 UPPER_SNAKE_CASE. 들여쓰기 공백 4칸.
-- import 순서: 프로젝트·서드파티 → 빈 줄 → `java.*`/`javax.*` → 빈 줄 → static. 와일드카드 import는 쓰지 않는다.
-- 의존성은 `private final` 필드 + Lombok `@RequiredArgsConstructor`로 주입한다.
-  생성자에 `@Value`가 필요한 경우(`JwtProvider`)만 생성자를 직접 쓴다.
-- 로깅은 Lombok `@Slf4j`. 로그·예외 메시지·주석은 한글로 쓰고, 주석은 '왜'가 필요한 곳에만 단다.
-- 테스트에서 접근해야 하는 메서드·상수는 `private` 대신 package-private으로 연다(`createJwt`, `MAX_ATTEMPTS`).
-- 설정값 묶음은 `@ConfigurationProperties` record로 받는다.
-
-### 패키지 구조
-
-- 기능은 `domain.<기능>.<계층>`(예: `client`, `client.dto`, `event`, `service`), 공통은 `global.<관심사>`에 둔다.
-- 필요한 계층만 만든다. 빈 패키지나 앞으로 쓸 것 같은 클래스를 미리 만들지 않는다.
-
-### 예외 처리
-
-- 클라이언트에 보이는 오류는 `CorteException(ErrorProperty)`로 던진다.
-  오류 코드는 `ErrorProperty`를 구현하는 enum(`status`, `code`, `message`, `@Getter @AllArgsConstructor`)으로 정의한다.
-  - 공통: `GlobalErrorCode`(`C001`~). 인증: `AuthErrorCode`(`A001`~). 영역마다 enum과 접두사를 따로 둔다.
-- `CorteException`(또는 cause가 `CorteException`인 예외)은 `GlobalExceptionFilter`가 `ErrorResponse` JSON으로 바꾼다.
-  Spring MVC 표준 예외는 `GlobalExceptionHandler`가 `GlobalErrorCode`로 바꾼다.
-- 처리하지 못한 예외는 `INTERNAL_ERROR`로 응답하고 내부 메시지를 노출하지 않는다.
-  응답이 이미 전송됐으면 덮어쓰지 않고 원래 예외를 다시 던진다.
-- 로그 레벨: 예상한 오류는 WARN, 처리하지 못한 오류는 ERROR와 스택 트레이스.
-- HTTP 응답으로 나가지 않는 내부·설정 오류(GitHub 키 파싱 등)는 `IllegalStateException`에 원인을 담아 던진다.
-
-### DTO
-
-- DTO는 `record`로 만든다. 외부 API용 DTO는 `client/dto`의 holder 클래스(`GithubDto`, `final` + private 생성자)에
-  중첩 record로 모으고, snake_case 필드는 `@JsonProperty`로 매핑한다.
-- 도메인 DTO 변환(Entity → Response)은 Service의 private 메서드에서 한다. 별도 Mapper나 DTO 정적 팩터리를 새로 만들지 않는다.
-  - 예외: 공통 오류 응답(`ErrorResponse.of`, `ValidErrorResponse.of`, `FieldErrorDetail.from`)은 기존 정적 팩터리를 유지한다.
-
-### 테스트
-
-- 대상과 같은 패키지의 `src/test/java`에 `<대상>Test` 이름으로 둔다.
-- 메서드명은 한글 문장 + 밑줄(`충돌이_3번_계속되면_예외를_던진다`). 본문은 `// given`, `// when`, `// then`
-  (또는 `// when & then`) 주석으로 나눈다.
-- 검증은 AssertJ(`assertThat`, `assertThatThrownBy`), 목 설정은 BDDMockito(`given`, `willThrow`, `willAnswer`)를 쓴다.
-- 단위 테스트: `@ExtendWith(MockitoExtension.class)` + `@Mock`/`@InjectMocks`, 또는 생성자로 직접 만든다.
-- 통합 테스트: `@SpringBootTest` + `@MockitoBean`. 외부 HTTP는 JDK `HttpServer` 스텁과 `@DynamicPropertySource`로 대체한다.
-- DB 테스트는 H2를 쓴다. H2 MySQL 모드는 MySQL의 락·격리 수준을 그대로 재현하지 않으므로,
-  동시성 동작을 바꿨다면 MySQL에서 검증했는지 따로 보고한다.
+| 경로 | 문서 | 내용 |
+| --- | --- | --- |
+| `src/main/` | `src/main/AGENTS.md` | 네이밍, 패키지 구조, 예외 처리, DTO 변환 |
+| `src/test/` | `src/test/AGENTS.md` | 테스트 위치·이름·구조, 테스트 범위 |
 
 ## 3. Working Rules
 
-- 작업 전 이 문서, 대상 코드, 현재 브랜치, 작업 트리 상태를 확인한다.
+- 작업 전 이 문서, 수정할 경로의 AGENTS.md, 대상 코드, 현재 브랜치, 작업 트리 상태를 확인한다.
+- 새 기능 요청은 4. Feature Workflow를 따른다. 버그 수정·작은 변경은 2~4단계 중 필요한 부분만 따른다.
 - 기존 파일 수정을 우선하고, 새 파일은 꼭 필요할 때만 만든다.
 - 요청과 무관한 포맷팅·리네이밍·리팩터링을 하지 않는다. 발견한 문제는 고치지 말고 보고한다.
 - 커밋은 하나의 논리적 작업 단위로 나눈다. 형식: `type: 한글 요약`
@@ -130,12 +94,70 @@ global/
 - 버그를 고칠 때는 재현 테스트를 먼저 작성해 실패를 확인한 뒤 수정한다.
 - 확인한 사실, 추론, 실행하지 못한 검증을 구분해 보고한다.
 
-## 4. Verification Checklist
+## 4. Feature Workflow
+
+사용자가 기능을 설명하면 아래 순서로 끝까지 만든다. 사용자 확인은 1단계 끝에서 한 번만 받는다.
+
+### 1단계: 명세 (여기서 멈추고 승인받는다)
+
+관련 코드와 디렉터리별 AGENTS.md를 읽은 뒤, 아래 형식으로 명세를 보여준다.
+
+```
+## 기능: <이름>
+- 목적: <한 줄>
+- API: <METHOD /path> — 요청 / 응답 / 인증 필요 여부
+- 데이터: 엔티티·필드·연관관계·제약(유니크, not null)
+- 규칙: 비즈니스 규칙과 경계값
+- 오류: 상황 → 오류 코드(<접두사>###) / HTTP 상태
+- 동시성: 동시 요청 지점과 보호 방법(락 / 유니크 제약 / 원자적 업데이트), 없으면 "없음"
+- 성능: 목록 조회 페이징, 연관 조회 방식(fetch join 등)
+- 범위 밖: 이번에 만들지 않는 것
+- 새 컨벤션 제안: 선례가 없는 계층(Entity, Controller 등)의 작성 방식
+- 질문: [꼭 필요] … / [있으면 좋음] … / [가정] 묻지 않고 이렇게 처리함: …
+```
+
+- 사용자의 설명에 근거가 없는 기능을 명세에 넣지 않는다.
+- 사용자가 승인하거나 수정 의견을 주면, 반영한 최종 명세를 기준으로 2단계부터 멈추지 않고 진행한다.
+- 승인된 새 컨벤션은 해당 디렉터리의 AGENTS.md에 추가한다.
+
+### 2단계: 브랜치
+
+- 작업 트리에 커밋하지 않은 변경이 있으면 멈추고 사용자에게 묻는다.
+- `git fetch origin develop` 후 `origin/develop`을 기준으로 `feature/#<이슈번호>-<영문-kebab-설명>` 브랜치를 만든다
+  (예: `feature/#21-submission-create`).
+  이슈 번호를 받지 못했다면 1단계 질문에 [꼭 필요]로 포함한다.
+
+### 3단계: 구현
+
+- Entity → Repository → Service → Controller 순서로, 계층마다 실패하는 테스트를 먼저 쓰고 통과시킨다.
+- 커밋은 동작하는 단위로 나눈다(예: `feat: 제출 엔티티와 저장소 추가` → `feat: 제출 생성 API 추가`).
+  각 커밋 시점에 `./gradlew build`가 통과해야 한다.
+- 구현 중 명세에 없는 결정이 필요하면:
+  - 결과가 크게 달라지는 결정이면 멈추고 묻는다.
+  - 아니면 가장 단순한 방법으로 정하고 보고서의 "가정"에 적는다.
+
+### 4단계: 검증과 보고
+
+Verification Checklist를 모두 확인한 뒤 아래 형식으로 보고한다.
+
+```
+## 결과: <기능 이름> (브랜치: <이름>)
+### 커밋별 리뷰 요약
+- <해시> <커밋 메시지>
+  - 변경: 무엇을 왜 바꿨는지
+  - 리뷰 포인트: 리뷰어가 특히 봐야 할 곳(파일:줄)과 이유
+### 가정
+### Verification Checklist (항목마다 통과/실패/해당 없음 + 근거)
+### 발견했지만 고치지 않은 문제
+### 남은 작업
+```
+
+## 5. Verification Checklist
 
 모든 작업 완료 전에 아래 항목을 확인하고, 항목마다 통과/실패/해당 없음과 근거를 보고한다.
 실행하지 못한 항목은 통과로 표시하지 않는다.
 
-- [ ] 컨벤션: Conventions 섹션의 모든 항목을 준수한다.
+- [ ] 컨벤션: 변경한 경로의 AGENTS.md에 있는 Conventions를 모두 준수한다.
 - [ ] 빌드: `./gradlew build`가 통과한다(테스트 포함, 실패 시 원인 수정 후 재실행).
 - [ ] 성능:
   - 연관 엔티티를 반복문 안에서 조회하지 않는다(필요 시 fetch join, `@EntityGraph`, batch size 사용).
