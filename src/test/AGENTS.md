@@ -13,7 +13,8 @@
   외부 HTTP는 JDK `HttpServer` 스텁과 `@DynamicPropertySource`로 대체한다.
 - HTTP 테스트: `@SpringBootTest` + `@AutoConfigureMockMvc`(`org.springframework.boot.webmvc.test.autoconfigure`).
   보안 필터와 `GlobalExceptionFilter`가 함께 적용된다. 인증은 주입받은 `JwtProvider`로 토큰을 만들어 `Authorization` 헤더에 넣는다.
-  엔드포인트마다 성공, 미인증(401 `A001`), 입력 오류(400 `C001`), 도메인 오류 응답을 검증한다.
+  엔드포인트마다 성공 응답을 검증한다. 인증 필수 경로는 토큰 없는 요청의 401 `A001`, 공개 경로(`/auth/**`)는 토큰 없이 통과를 검증한다.
+  입력 검증(400 `C001`)과 도메인 오류는 그 경로에 해당 규칙이 있을 때 검증한다.
 - 설정은 `src/test/resources/application.yml`이 main 설정을 대체한다(H2 메모리 DB, MySQL 모드, `create-drop`).
 - DB 테스트는 H2를 쓴다. H2 MySQL 모드는 MySQL의 락·격리 수준을 그대로 재현하지 않으므로,
   동시성 동작을 바꿨다면 MySQL에서 검증했는지 따로 보고한다.

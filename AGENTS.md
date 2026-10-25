@@ -6,9 +6,7 @@
 
 ## 1. Project Overview
 
-### 목적
-
-AI 코드 리뷰를 받으며 성장하는 코딩테스트 사이트의 백엔드(Corte-BE).
+목적: AI 코드 리뷰를 받으며 성장하는 코딩테스트 사이트의 백엔드(Corte-BE).
 
 ### 기술 스택
 
@@ -23,8 +21,8 @@ AI 코드 리뷰를 받으며 성장하는 코딩테스트 사이트의 백엔�
 | 인증 | jjwt 0.13.0 (HS 서명 access token) |
 | 기타 | Lombok, Jackson 3(`tools.jackson`), Docker(eclipse-temurin 21) |
 
-- 라이브러리 버전은 Spring Boot·Spring Cloud BOM을 따른다. jjwt만 직접 고정한다.
-- Spring Cloud 2025.1.x는 Boot 4.0 대상이라 `spring.cloud.compatibility-verifier.enabled=false`로 둔다.
+- 버전은 Spring Boot·Spring Cloud BOM을 따르고 jjwt만 직접 고정한다. Spring Cloud 2025.1.x는 Boot 4.0 대상이라
+  `spring.cloud.compatibility-verifier.enabled=false`로 둔다.
 
 ### 모듈/패키지 구조 (`src/main/java/com/example/cortebe`)
 
@@ -49,8 +47,7 @@ global/
 
 - 설정: `src/main/resources/application.yml`. 값은 `${ENV:기본값}` 형태로 환경 변수에서 받는다.
   필수 값은 `JWT_SECRET`(Base64)이다. GitHub App은 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`(PKCS#8)를 쓴다.
-- 테스트 설정: `src/test/resources/application.yml`이 main 설정을 대체한다(H2 메모리 DB, `create-drop`).
-- 실행: `compose.yml`(MySQL + app), `Dockerfile`(빌드/실행 다단계 이미지).
+- 테스트 설정은 `src/test/resources/application.yml`(H2). 실행: `compose.yml`(MySQL + app), `Dockerfile`.
 
 ### 주요 도메인
 
@@ -89,7 +86,9 @@ global/
 ## 3. Working Rules
 
 - 작업 전 이 문서, 수정할 경로의 AGENTS.md, 대상 코드, 현재 브랜치, 작업 트리 상태를 확인한다.
-- 새 기능 요청은 4. Feature Workflow를 따른다. 버그 수정·작은 변경은 0·3·4단계만 따른다.
+- 새 기능 요청은 4. Feature Workflow를 따른다.
+- 버그 수정·작은 변경은 현재 작업 브랜치에서 한다(develop으로 이동하지 않는다). main·develop·detached HEAD이면
+  `git switch -c fix/#<이슈번호>-<설명>`으로 브랜치를 먼저 만든다. 수정 전 `./gradlew build`로 기준 빌드를 확인하고 3·4단계를 따른다.
 - 기존 파일 수정을 우선하고, 새 파일은 꼭 필요할 때만 만든다.
 - 요청과 무관한 포맷팅·리네이밍·리팩터링을 하지 않는다. 범위 밖에서 발견한 문제는 고치지 말고 보고한다.
 - 커밋은 하나의 논리적 작업 단위로 나눈다. 형식: `type: 한글 요약`
@@ -102,18 +101,20 @@ global/
 ## 4. Feature Workflow
 
 사용자가 기능을 설명하면 아래 순서로 끝까지 만든다.
-정상 흐름에서 사용자 확인은 1단계 승인 한 번이다. 그 밖에는 아래 "멈추는 경우"에만 멈춘다.
+정상 흐름에서 사용자 확인은 1단계 승인 한 번이다. 그 밖에는 각 단계에 적힌 멈춤 조건과 아래 "멈추는 경우"에만 멈춘다.
 
 ### 0단계: 준비 (명세 전)
 
 1. 작업 트리가 깨끗한지 확인한다(`git status --short`). 변경이 있으면 멈추고 묻는다.
-2. 재개 확인: 현재 브랜치가 `feature/#<번호>-*`이고 `docs/specs/`에 그 번호의 명세가 있으면,
-   승인된 명세로 보고 3단계부터 이어서 한다. 새로 명세를 쓰거나 브랜치를 만들지 않는다.
+2. 재개 확인: 사용자가 특정 이슈 작업을 이어 하라고 했고, `feature/#<그 번호>-*` 브랜치와 `docs/specs/`의 명세가 있으면 재개한다.
+   그 브랜치로 이동해 명세 항목과 `git log <명세의 기준SHA>..HEAD`를 대조하고, 구현되지 않은 항목부터 3단계를 잇는다.
+   명세나 브랜치를 새로 만들지 않는다. 그 밖의 요청은 새 작업으로 본다.
 3. `git fetch origin develop`으로 기준을 받고 `git rev-parse origin/develop`으로 기준 SHA를 기록한다.
    fetch가 실패하면 멈추고 보고한다.
 4. 기준에 하네스가 있는지 확인한다: `git cat-file -e origin/develop:AGENTS.md`.
    없으면 기준 브랜치를 어디로 할지 사용자에게 묻는다(하네스 브랜치가 develop에 머지되기 전 상황).
 5. `git switch --detach <기준SHA>`로 기준 코드로 이동한 뒤, 그 코드와 그 시점의 AGENTS.md를 근거로 명세를 쓴다.
+6. 기준 빌드: `./gradlew build`. 실패하면 명세 전에 멈추고 실패 내용을 보고한다.
 
 ### 1단계: 명세 (여기서 멈추고 승인받는다)
 
@@ -142,13 +143,12 @@ global/
 - 승인은 "승인", "진행해", "좋아"처럼 진행 의사가 분명한 답이다.
   수정 의견만 받았으면 명세를 고쳐 다시 보여주고 승인을 기다린다.
 
-### 2단계: 브랜치와 기준 확인 (승인 후)
+### 2단계: 브랜치와 명세 저장 (승인 후)
 
 1. `git switch -c feature/#<이슈번호>-<영문-kebab-설명>`으로 기준 SHA에서 브랜치를 만든다(예: `feature/#21-submission-create`).
    같은 이름의 브랜치가 이미 있으면 멈추고 묻는다.
-2. 승인된 명세를 `docs/specs/<이슈번호>-<영문-kebab-설명>.md`로 저장한다.
+2. 승인된 명세(기준 SHA, 기준 빌드 결과 포함)를 `docs/specs/<이슈번호>-<영문-kebab-설명>.md`로 저장한다.
    새로 정한 컨벤션은 해당 AGENTS.md에 반영한다. 둘을 `docs: <기능> 명세 추가`로 커밋한다.
-3. 기준 빌드를 확인한다: `./gradlew build`. 코드를 바꾸기 전에 실패하면 멈추고 실패 내용을 보고한다.
 
 ### 3단계: 구현
 
@@ -165,7 +165,7 @@ global/
 다음 경우에만 작업을 멈추고 사용자에게 묻는다. 그 밖에는 끝까지 진행한다.
 - 승인된 명세의 API, 데이터, 규칙을 바꿔야 할 때
 - 이번 변경과 무관한 원인(기존 실패, JDK·네트워크 등 환경)으로 빌드가 실패할 때(범위 밖 코드는 고치지 않는다)
-- 데이터 삭제, 기존 컬럼 변경처럼 되돌리기 어려운 작업이 필요할 때
+- 데이터 삭제, 기존 컬럼 변경처럼 되돌리기 어려운 작업이 필요한데, 승인된 명세에 그 대상과 영향이 적혀 있지 않을 때
 
 ### 4단계: 검증과 보고
 

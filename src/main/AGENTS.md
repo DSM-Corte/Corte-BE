@@ -43,18 +43,23 @@
 
 ### 신규 계층 기본값 (선례 없음)
 
-Entity, Repository, Controller, 도메인 Service는 아직 선례가 없다. 첫 명세에서 바꾸자는 합의가 없으면 아래를 따르고,
+Entity, Repository, Controller, DB를 쓰는 도메인 Service는 아직 선례가 없다. 첫 명세에서 바꾸자는 합의가 없으면 아래를 따르고,
 합의한 내용은 이 섹션을 고쳐 기록한다.
 
-- Controller: 요청 DTO는 `@Valid @RequestBody`, 응답은 Response record. Entity를 응답으로 반환하지 않는다.
+- Controller: JSON 본문은 `@Valid @RequestBody` 요청 record로, 조회 조건은 쿼리 파라미터로 받는다.
+  응답은 Response record. Entity를 응답으로 반환하지 않는다.
   로그인 사용자는 `@AuthenticationPrincipal Long userId`로 받아 Service에 넘긴다.
   요청 본문·경로의 userId로 인증 주체를 대신하지 않는다.
 - Service: 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에 `@Transactional`.
   자원 소유권 확인, 연관 조회, DTO 변환을 트랜잭션 안에서 끝낸다.
   조회 실패는 `CorteException`(도메인 `*_NOT_FOUND` 또는 `GlobalErrorCode.RESOURCE_NOT_FOUND`)으로 던진다.
-- 유니크 제약으로 보호하는 쓰기는 `saveAndFlush`로 저장하고,
-  `DataIntegrityViolationException`을 도메인 오류 코드로 바꾼다. 사전 조회(`exists*`)만으로 막지 않는다.
+- 유니크 제약으로 보호하는 쓰기는 `saveAndFlush`로 저장한다. 사전 조회(`exists*`)만으로 막지 않는다.
+  `DataIntegrityViolationException`은 예상한 유니크 제약 위반일 때만 도메인 오류 코드로 바꾸고, 다른 무결성 오류는 그대로 전파한다.
+  판별: 제약 이름을 `@UniqueConstraint(name = "uk_<테이블>_<컬럼>")`으로 정하고, 원인인
+  `org.hibernate.exception.ConstraintViolationException`의 `getKind() == UNIQUE`이며
+  `getConstraintName()`에 그 이름이 포함되는지(대소문자 무시) 본다. H2는 `public.<이름> INDEX ...` 형태로 준다.
   예외를 잡은 뒤에는 다른 DB 작업 없이 바로 `CorteException`을 던진다(트랜잭션은 롤백된다).
 - Entity: `@Getter`, `@NoArgsConstructor(access = AccessLevel.PROTECTED)`, ID는 `GenerationType.IDENTITY`.
   setter 대신 의미 있는 이름의 변경 메서드를 둔다. 연관관계는 `FetchType.LAZY`.
-- 이벤트(`ProblemSolvedEvent` 등)는 Service 트랜잭션 안에서 발행한다. 트랜잭션 밖에서 발행하면 리스너가 실행되지 않는다.
+- `ProblemSolvedEvent`는 Service 트랜잭션 안에서 발행한다. 리스너가 `@TransactionalEventListener`라서
+  트랜잭션 밖에서 발행하면 실행되지 않는다.
