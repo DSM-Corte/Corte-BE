@@ -57,8 +57,9 @@ Entity, Repository, Controller, DB를 쓰는 도메인 Service는 아직 선례�
   `DataIntegrityViolationException`은 예상한 유니크 제약 위반일 때만 도메인 오류 코드로 바꾸고, 다른 무결성 오류는 그대로 전파한다.
   판별: 제약 이름을 `@UniqueConstraint(name = "uk_<테이블>_<컬럼>")`으로 정하고, 원인인
   `org.hibernate.exception.ConstraintViolationException`의 `getKind() == UNIQUE`이며
-  `getConstraintName()`에 그 이름이 포함되는지(대소문자 무시) 본다. H2는 `public.<이름> INDEX ...` 형태로 준다.
-  예외를 잡은 뒤에는 다른 DB 작업 없이 바로 `CorteException`을 던진다(트랜잭션은 롤백된다).
+  `getConstraintName()`이 그 이름과 같은지 본다. 값은 DB마다 형태가 달라(H2: `public.<이름> INDEX ...`)
+  첫 공백 앞까지 자르고 마지막 `.` 뒤만 남겨 대소문자 무시로 정확히 비교한다. 부분 문자열로 비교하지 않고, 식별하지 못하면 전파한다.
+  예상한 유니크 위반으로 변환하는 경우, 다른 DB 작업 없이 바로 `CorteException`을 던진다(트랜잭션은 롤백된다).
 - Entity: `@Getter`, `@NoArgsConstructor(access = AccessLevel.PROTECTED)`, ID는 `GenerationType.IDENTITY`.
   setter 대신 의미 있는 이름의 변경 메서드를 둔다. 연관관계는 `FetchType.LAZY`.
 - `ProblemSolvedEvent`는 Service 트랜잭션 안에서 발행한다. 리스너가 `@TransactionalEventListener`라서
