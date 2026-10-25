@@ -11,8 +11,9 @@
 - import 순서: 프로젝트·서드파티 → 빈 줄 → `java.*`/`javax.*` → 빈 줄 → static. 와일드카드 import는 쓰지 않는다.
 - 의존성은 `private final` 필드 + Lombok `@RequiredArgsConstructor`로 주입한다.
   생성자에 `@Value`가 필요한 경우(`JwtProvider`)만 생성자를 직접 쓴다.
-- 로깅은 Lombok `@Slf4j`. 로그·예외 메시지·주석은 한글로 쓰고, 주석은 '왜'가 필요한 곳에만 단다.
-- 테스트에서 접근해야 하는 메서드·상수는 `private` 대신 package-private으로 연다(`createJwt`, `MAX_ATTEMPTS`).
+- 로깅은 Lombok `@Slf4j`. 새로 쓰는 로그·예외 메시지·주석은 한글로 쓴다(기존 영문 로그는 그대로 둔다).
+  주석은 '왜'가 필요한 곳에만 단다.
+- 공개 메서드로 검증하기 어려울 때만 테스트용으로 메서드·상수를 package-private으로 연다(`createJwt`, `MAX_ATTEMPTS`).
 - 설정값 묶음은 `@ConfigurationProperties` record로 받는다. 값은 `application.yml`에서 `${ENV:기본값}`으로 받는다.
 
 ### 패키지 구조
@@ -24,7 +25,8 @@
 
 - 클라이언트에 보이는 오류는 `CorteException(ErrorProperty)`로 던진다.
   오류 코드는 `ErrorProperty`를 구현하는 enum(`status`, `code`, `message`, `@Getter @AllArgsConstructor`)으로 정의한다.
-  - 공통: `GlobalErrorCode`(`C001`~). 인증: `AuthErrorCode`(`A001`~). 영역마다 enum과 접두사를 따로 둔다.
+  - 사용 중인 접두사: `C` 공통(`GlobalErrorCode`), `A` 인증(`AuthErrorCode`).
+  - 새 도메인은 `domain.<기능>.exception.<기능>ErrorCode`에 사용하지 않은 대문자 접두사로 만들고, 위 목록에 추가한다.
 - `CorteException`(또는 cause가 `CorteException`인 예외)은 `GlobalExceptionFilter`가 `ErrorResponse` JSON으로 바꾼다.
   Spring MVC 표준 예외는 `GlobalExceptionHandler`가 `GlobalErrorCode`로 바꾼다.
 - 처리하지 못한 예외는 `INTERNAL_ERROR`로 응답하고 내부 메시지를 노출하지 않는다.
@@ -39,7 +41,20 @@
 - 도메인 DTO 변환(Entity → Response)은 Service의 private 메서드에서 한다. 별도 Mapper나 DTO 정적 팩터리를 새로 만들지 않는다.
   - 예외: 공통 오류 응답(`ErrorResponse.of`, `ValidErrorResponse.of`, `FieldErrorDetail.from`)은 기존 정적 팩터리를 유지한다.
 
-### 아직 정해지지 않은 것
+### 신규 계층 기본값 (선례 없음)
 
-- Entity, Repository, Controller는 이 브랜치에 선례가 없다.
-  처음 만드는 기능에서는 명세 단계에서 방식을 제안해 사용자 승인을 받고, 승인된 규칙을 이 섹션 위에 추가한다.
+Entity, Repository, Controller, 도메인 Service는 아직 선례가 없다. 첫 명세에서 바꾸자는 합의가 없으면 아래를 따르고,
+합의한 내용은 이 섹션을 고쳐 기록한다.
+
+- Controller: 요청 DTO는 `@Valid @RequestBody`, 응답은 Response record. Entity를 응답으로 반환하지 않는다.
+  로그인 사용자는 `@AuthenticationPrincipal Long userId`로 받아 Service에 넘긴다.
+  요청 본문·경로의 userId로 인증 주체를 대신하지 않는다.
+- Service: 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에 `@Transactional`.
+  자원 소유권 확인, 연관 조회, DTO 변환을 트랜잭션 안에서 끝낸다.
+  조회 실패는 `CorteException`(도메인 `*_NOT_FOUND` 또는 `GlobalErrorCode.RESOURCE_NOT_FOUND`)으로 던진다.
+- 유니크 제약으로 보호하는 쓰기는 `saveAndFlush`로 저장하고,
+  `DataIntegrityViolationException`을 도메인 오류 코드로 바꾼다. 사전 조회(`exists*`)만으로 막지 않는다.
+  예외를 잡은 뒤에는 다른 DB 작업 없이 바로 `CorteException`을 던진다(트랜잭션은 롤백된다).
+- Entity: `@Getter`, `@NoArgsConstructor(access = AccessLevel.PROTECTED)`, ID는 `GenerationType.IDENTITY`.
+  setter 대신 의미 있는 이름의 변경 메서드를 둔다. 연관관계는 `FetchType.LAZY`.
+- 이벤트(`ProblemSolvedEvent` 등)는 Service 트랜잭션 안에서 발행한다. 트랜잭션 밖에서 발행하면 리스너가 실행되지 않는다.
