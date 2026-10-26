@@ -3,6 +3,7 @@
 `src/main` 아래 코드를 수정하기 전에 읽는다. 저장소 루트의 `AGENTS.md`를 먼저 읽었다는 전제다.
 아래 항목은 기존 코드에서 확인했거나 사용자와 합의한 것이다. 새 규칙을 합의하면 이 파일에 추가한다.
 기존 코드가 아래 규칙과 다르더라도 요청 없이 고치지 않는다. 새로 쓰는 코드만 따른다.
+새 코드는 `docs/code-templates.md`의 템플릿을 복사해 만든다.
 
 ## Conventions
 
@@ -44,7 +45,8 @@
 
 ### 예외 처리
 
-- 클라이언트에 보이는 오류는 도메인 오류 코드 enum + 전용 예외 클래스로 던진다.
+- 클라이언트에 보이는 오류는 도메인 오류 코드 enum + 전용 예외 클래스로 던진다. `new CorteException(...)`을 직접 던지지 않는다.
+  공통 오류도 전용 클래스(`InvalidInputException`, `UnauthorizedException`, `InvalidTokenException`)를 쓰고, 없으면 같은 모양으로 만든다.
   - `domain.<기능>.exception.<기능>ErrorCode`: `ErrorProperty` 구현, `status`·`code`·`message`, `@Getter @AllArgsConstructor`.
   - 예외: `<상황>Exception extends CorteException`, 인자 없는 생성자에서 `super(<기능>ErrorCode.X)`(`PostNotFoundException`).
   - 코드는 접두사 + 세 자리 순번, 메시지는 "~습니다." 존댓말이다.
