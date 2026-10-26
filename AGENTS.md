@@ -12,66 +12,57 @@
 
 | 구분 | 내용 |
 | --- | --- |
-| 언어 | Java 21 (Gradle toolchain) |
-| 빌드 | Gradle Wrapper 9.7.1, 단일 모듈 `Corte-BE` |
+| 언어·빌드 | Java 21 (Gradle toolchain), Gradle Wrapper 9.7.1, 단일 모듈 `Corte-BE` |
 | 프레임워크 | Spring Boot 4.1.1, io.spring.dependency-management 1.1.7 |
-| 웹/보안 | Spring MVC(Servlet), Spring Security(stateless), Jakarta Validation |
-| 영속성 | Spring Data JPA, MySQL 8.4(compose), 테스트는 H2(MySQL 모드) |
+| 웹/보안 | Spring MVC, Spring Security(stateless, BCrypt), Jakarta Validation, springdoc-openapi 3.1.1 |
+| 영속성 | Spring Data JPA(Auditing), MySQL 8.4(compose), 테스트는 H2(MySQL 모드) |
 | 외부 연동 | Spring Cloud 2025.1.3 OpenFeign + feign-hc5 (GitHub REST API) |
 | 인증 | jjwt 0.13.0 (HS 서명 access token) |
 | 기타 | Lombok, Jackson 3(`tools.jackson`), Docker(eclipse-temurin 21) |
 
-- 버전은 Spring Boot·Spring Cloud BOM을 따르고 jjwt만 직접 고정한다. Spring Cloud 2025.1.x는 Boot 4.0 대상이라
-  `spring.cloud.compatibility-verifier.enabled=false`로 둔다.
+- 버전은 Spring Boot·Spring Cloud BOM을 따르고 jjwt·springdoc만 직접 고정한다.
+  Spring Cloud 2025.1.x는 Boot 4.0 대상이라 `spring.cloud.compatibility-verifier.enabled=false`로 둔다.
 
-### 모듈/패키지 구조 (`src/main/java/com/example/cortebe`)
+### 패키지 구조 (`src/main/java/com/example/cortebe`)
 
 ```
-CorteBeApplication            # @EnableFeignClients, @ConfigurationPropertiesScan
-domain/
-  github/                     # 풀이를 사용자 GitHub 레포에 커밋
-    GithubAppProperties       # @ConfigurationProperties("github.app") record
-    client/GithubClient       # Feign 클라이언트
-    client/dto/GithubDto      # 외부 API 요청/응답 record 모음
-    event/                    # ProblemSolvedEvent, ProblemSolvedEventListener
-    service/                  # GithubService, GithubAppTokenProvider
+domain/<기능>/{controller, service, entity, repository, dto, exception}   # 필요한 계층만
+  auth/      회원가입·로그인          user/     회원 엔티티·오류 코드
+  board/     게시판                   problem/  문제
+  github/    풀이를 사용자 GitHub 레포에 커밋 (client, client/dto, event, service)
 global/
-  config/                     # AsyncConfig, FilterConfig, SecurityConfig
-  error/                      # GlobalExceptionFilter, GlobalExceptionHandler
-    exception/                # CorteException, ErrorProperty, GlobalErrorCode
-    response/                 # ErrorResponse, ValidErrorResponse
-  security/
-    exception/AuthErrorCode
-    jwt/                      # JwtProvider, JwtAuthenticationFilter
+  config/    Async, Filter, JpaAuditing, OpenApi, Security
+  error/     GlobalExceptionFilter, GlobalExceptionHandler, exception/, response/
+  security/  Role, exception/, jwt/(JwtProvider, JwtAuthenticationFilter)
+  swagger/   API별 오류 응답 예시 자동 생성
 ```
 
-- 설정: `src/main/resources/application.yml`. 값은 `${ENV:기본값}` 형태로 환경 변수에서 받는다.
-  필수 값은 `JWT_SECRET`(Base64)이다. GitHub App은 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`(PKCS#8)를 쓴다.
+- 설정: `src/main/resources/application.yml`. 값은 `${ENV:기본값}`으로 환경 변수에서 받는다. 필수 값은 `JWT_SECRET`(Base64).
+  GitHub App은 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`(PKCS#8), Swagger는 `SWAGGER_ENABLED`.
 - 테스트 설정은 `src/test/resources/application.yml`(H2). 실행: `compose.yml`(MySQL + app), `Dockerfile`.
 
 ### 주요 도메인
 
 | 도메인 | 상태 |
 | --- | --- |
-| 인증 | JWT 발급·검증과 필터만 있다. 회원 엔티티와 로그인 API는 아직 없다. |
-| GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장하는 부분만 있다. 이벤트를 발행하는 채점 코드는 없다. |
-| 문제, 제출, 채점, AI 리뷰, 점수/랭킹 | 아직 구현되지 않았다. 코드에 없는 구조를 사실처럼 가정하지 않는다. |
+| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname |
+| 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제 |
+| 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
+| GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 이벤트를 발행하는 채점 코드는 없다 |
+| 제출, 채점, AI 리뷰, 점수/랭킹 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
 
 ### 아키텍처
 
-- 요청 흐름: `GlobalExceptionFilter`(최우선 순서) → Spring Security(`JwtAuthenticationFilter`)
-  → DispatcherServlet → Controller → `GlobalExceptionHandler`(MVC 예외).
-- 보안: 세션 없음, CSRF 끔. `/auth/**`만 허용하고 나머지는 인증이 필요하다.
-  `JwtAuthenticationFilter`는 `/auth/**`에서 토큰을 검사하지 않는다. 인증 주체(principal)는 `Long userId`다.
-- 트랜잭션: `open-in-view: false`. 지연 로딩과 DTO 변환은 Service 트랜잭션 안에서 끝내야 한다.
-- 스키마: 마이그레이션 도구 없음. main은 `ddl-auto: update`(기본값), 테스트는 `create-drop`.
+- 요청 흐름: `GlobalExceptionFilter`(최우선) → Spring Security(`JwtAuthenticationFilter`) → Controller → `GlobalExceptionHandler`.
+- 보안: 세션 없음, CSRF 끔. 공개 경로는 Swagger, `/auth/**`, `GET`·`HEAD /api/problems/**`.
+  문제 쓰기는 `ADMIN`, 나머지는 인증 필요. `/auth/**`에서는 토큰을 검사하지 않는다.
+  principal은 `Long userId`, 권한은 JWT `role` 클레임(`USER`/`ADMIN`, 없으면 `USER`)이다.
+- 트랜잭션: `open-in-view: false`. 지연 로딩과 DTO 변환은 Service 트랜잭션 안에서 끝낸다.
+- 스키마: 마이그레이션 도구 없음. main은 `ddl-auto: update`, 테스트는 `create-drop`.
   `update`는 기존 데이터가 있는 컬럼에 NOT NULL·유니크를 안전하게 추가하지 못한다.
-- GitHub 저장: 트랜잭션 안에서 `ProblemSolvedEvent`를 발행하면 커밋된 뒤
-  `@Async` + `@TransactionalEventListener(AFTER_COMMIT)` 리스너가 `GithubService`를 호출한다.
-  Git Data API로 tree·commit을 만들고, 브랜치는 `force=false`로 갱신한다.
-  브랜치 ref 갱신이 409/422로 실패할 때만 최신 ref로 다시 만든다(최초 포함 총 3회 시도).
-  최종 실패는 리스너가 ERROR 로그로 남기고 삼킨다.
-- 종료 시 비동기 작업 큐를 최대 30초 기다린다(`AsyncConfig`).
+- GitHub 저장: 트랜잭션 안에서 `ProblemSolvedEvent`를 발행하면 커밋 후 `@Async` + `@TransactionalEventListener(AFTER_COMMIT)`
+  리스너가 `GithubService`를 호출한다. 브랜치 ref 갱신이 409/422면 최신 ref로 다시 만든다(총 3회).
+  최종 실패는 ERROR 로그만 남긴다. 종료 시 비동기 작업을 최대 30초 기다린다(`AsyncConfig`).
 
 ## 2. Conventions
 
@@ -80,7 +71,7 @@ global/
 
 | 경로 | 문서 | 내용 |
 | --- | --- | --- |
-| `src/main/` | `src/main/AGENTS.md` | 네이밍, 패키지 구조, 예외 처리, DTO 변환 |
+| `src/main/` | `src/main/AGENTS.md` | 네이밍, 계층별 규칙, 예외 처리, DTO, 기존 코드에서 정해진 것 |
 | `src/test/` | `src/test/AGENTS.md` | 테스트 위치·이름·구조, 테스트 범위 |
 
 ## 3. Working Rules
@@ -97,6 +88,13 @@ global/
 - push하지 않는다. 사용자가 명시적으로 요청하기 전에는 마음대로 push하지 않는다.
 - 버그를 고칠 때는 재현 테스트를 먼저 작성해 실패를 확인한 뒤 수정한다.
 - 확인한 사실, 추론, 실행하지 못한 검증을 구분해 보고한다.
+
+### 진행 방식 (에이전트가 주도한다)
+
+- 세션 첫 응답: 브랜치, 작업 트리, `docs/specs/`를 확인해 지금 상태를 한두 줄로 알리고,
+  할 수 있는 일(기능 만들기, 버그 수정, 이어서 하기)과 요청 예시를 안내한다.
+- AGENTS.md에 정해진 것은 묻지 않는다. 정해지지 않은 것은 추천안을 붙여 묻는다.
+- 작업을 마치면 다음에 할 일을 1~2개 제안한다(미구현 도메인, 발견했지만 고치지 않은 문제 기준).
 
 ## 4. Feature Workflow
 
@@ -132,13 +130,11 @@ global/
 - 동시성: 동시 요청 지점과 보호 방법(락 / 유니크 제약 / 원자적 업데이트), 없으면 "없음"
 - 성능: 목록 조회 페이징, 연관 조회 방식(fetch join 등)
 - 범위 밖: 이번에 만들지 않는 것
-- 새 컨벤션 제안: src/main/AGENTS.md "신규 계층 기본값"과 다르게 할 것, 또는 아직 정해지지 않은 것
-- 질문: [꼭 필요] … / [있으면 좋음] … / [가정] 묻지 않고 이렇게 처리함: …
+- 새 컨벤션 제안: src/main/AGENTS.md "계층별 규칙"과 다르게 할 것, 또는 아직 정해지지 않은 것
+- 질문: [꼭 필요] … (추천: …) / [있으면 좋음] … / [가정] 묻지 않고 이렇게 처리함: …
 ```
 
-- 첫 기능이면 아래를 반드시 [꼭 필요]로 묻는다. 정해지면 해당 AGENTS.md에 기록한다.
-  - API 경로 접두사(예: `/api` 사용 여부). 현재 보안 설정의 허용 경로는 `/auth/**`뿐이다.
-  - 스키마 변경 방식(계속 `ddl-auto: update`를 쓸지, 마이그레이션 도구를 도입할지).
+- 승인하면 질문의 추천안도 함께 정해진 것으로 보고, 새로 정한 규칙은 2단계에서 AGENTS.md에 기록한다.
 - 사용자의 설명에 근거가 없는 기능을 명세에 넣지 않는다. 이슈 번호가 없으면 [꼭 필요]로 묻는다.
 - 승인은 "승인", "진행해", "좋아"처럼 진행 의사가 분명한 답이다.
   수정 의견만 받았으면 명세를 고쳐 다시 보여주고 승인을 기다린다.
