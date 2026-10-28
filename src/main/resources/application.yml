@@ -34,3 +34,13 @@ github:
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: ${JWT_ACCESS_EXPIRATION:30m}
+
+judge:
+  enabled: ${JUDGE_ENABLED:false}
+  docker: ${JUDGE_DOCKER:docker}
+  concurrency: ${JUDGE_CONCURRENCY:2}
+  queue-capacity: ${JUDGE_QUEUE_CAPACITY:16}
+  requests-per-minute: ${JUDGE_REQUESTS_PER_MINUTE:30}
+  session-seconds: ${JUDGE_SESSION_SECONDS:120}
+  compile-seconds: ${JUDGE_COMPILE_SECONDS:60}
+  output-bytes: ${JUDGE_OUTPUT_BYTES:1048576}

@@ -1,16 +1,23 @@
 package com.example.cortebe.domain.problem.repository;
 
 import com.example.cortebe.domain.problem.entity.Problem;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface ProblemRepository extends JpaRepository<Problem, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Problem p where p.id = :id")
+    Optional<Problem> findLockedById(Long id);
+
     Page<Summary> findAllBy(Pageable pageable);
     Page<Summary> findAllByCategory(String category, Pageable pageable);
 

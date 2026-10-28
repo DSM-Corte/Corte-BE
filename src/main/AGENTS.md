@@ -50,7 +50,7 @@
   - `domain.<기능>.exception.<기능>ErrorCode`: `ErrorProperty` 구현, `status`·`code`·`message`, `@Getter @AllArgsConstructor`.
   - 예외: `<상황>Exception extends CorteException`, 인자 없는 생성자에서 `super(<기능>ErrorCode.X)`(`PostNotFoundException`).
   - 코드는 접두사 + 세 자리 순번, 메시지는 "~습니다." 존댓말이다.
-  - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
+  - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판, `J` 실행·채점. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
 - `CorteException`(또는 cause가 `CorteException`인 예외)은 `GlobalExceptionFilter`가 `ErrorResponse` JSON으로 바꾼다.
   Spring MVC 표준 예외는 `GlobalExceptionHandler`가 `GlobalErrorCode`로 바꾼다.
 - 오류 응답 형태: `{timestamp, status, code, message}`. 검증 오류는 `errors[{field, value, reason}]`가 붙는다.
@@ -77,3 +77,8 @@
   커밋 메시지 `[{problemId}] {제목} 풀이`, 레포의 기본 브랜치에 저장한다.
 - 풀이 저장 이벤트는 GitHub App `installationId`, `owner`, `repo`를 요구한다. 회원에 이 연동 정보가 아직 없다.
 - 언어 이름(`language`)과 파일 확장자(`fileExtension`)는 따로 다룬다.
+- 실행·채점의 `JobManager`는 트랜잭션 없는 작업 조정자이고, DB 접근·DTO 변환은 `JobStore`에서 수행한다.
+  설정에 따라 유한 큐와 세마포어를 함께 초기화해야 하므로 `JobManager`는 명시적 주입 생성자를 사용한다.
+  실행 중에는 트랜잭션을 유지하지 않는다. 큰 채점 스냅샷은 DB 안에서 복사하고 8개씩 projection으로 읽는다.
+- 실행·채점은 단일 인스턴스 구성이다. 사용자 코드를 호스트에서 직접 실행하거나 호스트 폴더·비밀값을
+  실행 컨테이너에 전달하지 않는다. 비회원 작업을 계정의 푼 문제 기록으로 연결하지 않는다.
