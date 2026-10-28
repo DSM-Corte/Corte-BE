@@ -50,7 +50,7 @@
   - `domain.<기능>.exception.<기능>ErrorCode`: `ErrorProperty` 구현, `status`·`code`·`message`, `@Getter @AllArgsConstructor`.
   - 예외: `<상황>Exception extends CorteException`, 인자 없는 생성자에서 `super(<기능>ErrorCode.X)`(`PostNotFoundException`).
   - 코드는 접두사 + 세 자리 순번, 메시지는 "~습니다." 존댓말이다.
-  - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
+  - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판, `J` 채점. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
 - `CorteException`(또는 cause가 `CorteException`인 예외)은 `GlobalExceptionFilter`가 `ErrorResponse` JSON으로 바꾼다.
   Spring MVC 표준 예외는 `GlobalExceptionHandler`가 `GlobalErrorCode`로 바꾼다.
 - 오류 응답 형태: `{timestamp, status, code, message}`. 검증 오류는 `errors[{field, value, reason}]`가 붙는다.
