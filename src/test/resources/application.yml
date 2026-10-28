@@ -15,3 +15,6 @@ spring:
 jwt:
   secret: dGVzdC1zZWNyZXQta2V5LWZvci1jb3J0ZS1iZS10ZXN0LW9ubHktMzJieXRlcw==
   access-expiration: 30m
+
+admin:
+  emails: admin@corte.com

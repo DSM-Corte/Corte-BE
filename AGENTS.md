@@ -37,14 +37,14 @@ global/
 ```
 
 - 설정: `src/main/resources/application.yml`. 값은 `${ENV:기본값}`으로 환경 변수에서 받는다. 필수 값은 `JWT_SECRET`(Base64).
-  GitHub App은 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`(PKCS#8), Swagger는 `SWAGGER_ENABLED`.
+  GitHub App은 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`(PKCS#8), Swagger는 `SWAGGER_ENABLED`, 관리자 이메일은 `ADMIN_EMAILS`(쉼표 구분).
 - 테스트 설정은 `src/test/resources/application.yml`(H2). 실행: `compose.yml`(MySQL + app), `Dockerfile`.
 
 ### 주요 도메인
 
 | 도메인 | 상태 |
 | --- | --- |
-| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname |
+| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname. `ADMIN_EMAILS`에 있는 이메일로 로그인하면 ADMIN 토큰(권한 컬럼 없음, 다음 로그인부터 적용) |
 | 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제 |
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 이벤트를 발행하는 채점 코드는 없다 |
@@ -58,31 +58,30 @@ global/
   문제 쓰기는 `ADMIN`, 나머지는 인증 필요. `/auth/**`에서는 토큰을 검사하지 않는다.
   principal은 `Long userId`, 권한은 JWT `role` 클레임(`USER`/`ADMIN`, 없으면 `USER`)이다.
 - 트랜잭션: `open-in-view: false`. 지연 로딩과 DTO 변환은 Service 트랜잭션 안에서 끝낸다.
-- 스키마: 마이그레이션 도구 없음. main은 `ddl-auto: update`, 테스트는 `create-drop`.
-  `update`는 기존 데이터가 있는 컬럼에 NOT NULL·유니크를 안전하게 추가하지 못한다.
+- 스키마: 마이그레이션 도구 없음. 테스트는 `create-drop`, main은 `ddl-auto: update`라 기존 데이터가 있는 컬럼에 NOT NULL·유니크를 안전하게 추가하지 못한다.
 - GitHub 저장: 트랜잭션 안에서 `ProblemSolvedEvent`를 발행하면 커밋 후 `@Async` + `@TransactionalEventListener(AFTER_COMMIT)`
   리스너가 `GithubService`를 호출한다. 브랜치 ref 갱신이 409/422면 최신 ref로 다시 만든다(총 3회).
   최종 실패는 ERROR 로그만 남긴다. 종료 시 비동기 작업을 최대 30초 기다린다(`AsyncConfig`).
 
 ## 2. Conventions
 
-컨벤션은 디렉터리별 AGENTS.md에 있다. 파일을 수정하기 전에 그 경로에서 가장 가까운 AGENTS.md를 읽는다.
-도구가 하위 AGENTS.md를 자동으로 읽지 않더라도 직접 열어 읽는다.
+컨벤션은 디렉터리별 AGENTS.md에 있다. 파일을 수정하기 전에 그 경로에서 가장 가까운 AGENTS.md를 자동으로 읽히지 않아도 직접 열어 읽는다.
 
 | 경로 | 문서 | 내용 |
 | --- | --- | --- |
 | `src/main/` | `src/main/AGENTS.md` | 네이밍, 계층별 규칙, 예외 처리, DTO, 기존 코드에서 정해진 것 |
 | `src/test/` | `src/test/AGENTS.md` | 테스트 위치·이름·구조, 테스트 범위 |
 | 새 코드 전체 | `docs/code-templates.md` | 이름 규칙, 결정 기본값, 계층별·테스트 코드 템플릿 |
+| 검증 | `docs/verification.md` | 증거 형식, 명세-테스트 대응표, 테스트 속이기 검사, 실행 검증, 독립 리뷰, CI |
 
 ## 3. Working Rules
 
 - 작업 전 이 문서, 수정할 경로의 AGENTS.md, 대상 코드, 현재 브랜치, 작업 트리 상태를 확인한다.
 - 새 기능과 버그 수정은 4. Feature Workflow를 따른다. 버그는 재현 조건 위주로 묻고, 라벨 `bug`, 브랜치 `fix/#<번호>-<설명>`을 쓴다.
   진행 중인 작업 브랜치에서 받은 수정 요청은 그 브랜치에서 한다.
-- 기존 파일 수정을 우선하고, 새 파일은 꼭 필요할 때만 만든다.
-- 요청과 무관한 포맷팅·리네이밍·리팩터링을 하지 않는다. 범위 밖에서 발견한 문제는 고치지 말고 보고한다.
-- 커밋은 하나의 논리적 작업 단위로 나눈다. 형식: `type: 한글 요약` (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`).
+- 기존 파일 수정을 우선하고 새 파일은 꼭 필요할 때만 만든다. 요청과 무관한 포맷팅·리네이밍·리팩터링은 하지 않고, 범위 밖 문제는 보고만 한다.
+- 커밋은 논리적 작업 단위로 나누고 `type: 한글 요약`(feat·fix·refactor·test·docs·chore)으로 쓴다.
+  커밋·이슈·PR에 `Co-Authored-By`, "Generated with ..." 같은 AI 작성 표시를 넣지 않는다.
 - main·develop 브랜치에서 직접 작업하거나 push하지 않는다.
 - push는 4. Feature Workflow 5단계에서 그 작업 브랜치에만 한다. 그 밖에는 사용자가 요청할 때만 한다.
 - 버그를 고칠 때는 재현 테스트를 먼저 작성해 실패를 확인한 뒤 수정한다.
@@ -104,8 +103,7 @@ global/
 원하시면 기술 스택도 질문하도록 할게요. 설명 끝에 "기술스택도 질문해줘"라고 이어붙여주세요!
 ```
 
-- 사용자의 첫 메시지가 이미 기능 설명이면 인사를 생략하고 바로 1단계 질문으로 간다.
-  설명에 "기술스택도 질문해줘"가 있으면 기술 스택 질문을 원한 것으로 본다.
+- 첫 메시지가 이미 기능 설명이면 인사 없이 1단계 질문으로 간다. 설명에 "기술스택도 질문해줘"가 있으면 기술 스택 질문을 원한 것으로 본다.
 - 재개: "#N 이어서 해줘"이고 `feature/#N-*`(또는 `fix/#N-*`) 브랜치와 `docs/specs/N-*.md`가 있으면, 그 브랜치에서
   명세를 코드·테스트·`git log <기준SHA>..HEAD`와 대조해 남은 것부터 3단계를 잇는다. 이슈·브랜치를 새로 만들지 않는다.
 
@@ -127,6 +125,7 @@ global/
 - 규칙: 비즈니스 규칙, 경계값, 소유권 / 오류: 상황 → 코드(<접두사>###) / HTTP 상태
 - 트랜잭션 / 동시성: 보호 방법(락 / 유니크 제약 / 원자적 업데이트) 또는 "없음" / 성능: 페이징, 연관 조회
 - 기술 선택(기술 스택 질문을 원했을 때) / 범위 밖 / 새 컨벤션(src/main/AGENTS.md "계층별 규칙"과 다른 것)
+- 테스트 대응: 명세 항목 → 테스트·레드 증거 (3단계에서 채운다, `docs/verification.md` 2절)
 ```
 
 ### 2단계: 이슈와 브랜치
@@ -137,18 +136,16 @@ global/
 3. `git fetch origin develop` 후 `git switch -c feature/#<이슈번호>-<영문-kebab-설명> origin/develop`.
    같은 이름 브랜치가 있으면 멈추고 묻는다. `git rev-parse HEAD`를 기준 SHA로 기록한다.
 4. 기준 빌드 `./gradlew build`. 코드를 바꾸기 전에 실패하면 멈추고 보고한다.
-5. 확정한 명세(기준 SHA 포함)를 `docs/specs/<이슈번호>-<설명>.md`로 저장하고, 새 컨벤션은 해당 AGENTS.md에 반영해
-   `docs: <기능> 명세 추가`로 커밋한다.
+5. 확정한 명세(기준 SHA 포함)를 `docs/specs/<이슈번호>-<설명>.md`로 저장하고 새 컨벤션은 해당 AGENTS.md에 반영해 `docs: <기능> 명세 추가`로 커밋한다.
 
 ### 3단계: 구현
 
 - 필요한 계층만 Entity → Repository → Service → Controller 순서로 만든다.
   `docs/code-templates.md`의 예시를 복사해 이름만 바꾸고, 이름 규칙·결정 기본값·커밋 순서를 그대로 따른다.
-- TDD는 명세의 동작 단위(규칙, 경계값, 오류 경로, HTTP 계약)로 한다.
-  실패하는 테스트를 먼저 쓰고, 실패 이유가 "기능이 없어서"인지 확인한 뒤 구현한다.
+- TDD는 명세의 동작 단위(규칙, 경계값, 오류 경로, HTTP 계약)로 한다. 실패하는 테스트를 먼저 쓰고, 실패 이유가 "기능이 없어서"인지
+  확인해 명세의 테스트 대응표에 레드 증거로 적은 뒤 구현한다.
   getter뿐인 엔티티나 단순 위임처럼 검증할 동작이 없는 코드에는 별도 테스트를 만들지 않는다.
-- 커밋은 동작하는 단위로 나눈다(예: `feat: 제출 엔티티와 저장소 추가` → `feat: 제출 생성 API 추가`).
-  커밋 전 `./gradlew build`가 통과해야 한다.
+- 커밋은 동작하는 단위로 나눈다(예: `feat: 제출 엔티티와 저장소 추가` → `feat: 제출 생성 API 추가`). 커밋 전 `./gradlew build`가 통과해야 한다.
 - 명세에 없는 결정은 가장 단순한 방법으로 정하고 보고서의 "가정"에 적는다.
 
 ### 멈추는 경우 (2단계 이후)
@@ -160,11 +157,13 @@ global/
 
 ### 4단계: 검증
 
-Verification Checklist와 결과가 사용자 목적을 이루는지 확인한다. 실패나 미실행이 있으면 push하지 않고 보고한다.
+Verification Checklist를 `docs/verification.md` 절차대로 확인하고, 결과가 사용자 목적을 이루는지 본다.
+독립 리뷰까지 마친 뒤 실패나 미실행이 있으면 push하지 않고 보고한다.
 
 ### 5단계: push와 PR
 
-1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일>`.
+1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일> --label <이슈와 같은 라벨> --assignee @me --reviewer <리뷰어>`.
+   `<리뷰어>`는 이름을 고정하지 않고 매번 조회한다: 저장소 협업자(`gh api repos/{owner}/{repo}/collaborators -q '.[].login'`) 중 현재 `gh` 사용자(`gh api user -q .login`)를 뺀 전원을 쉼표로 잇는다.
 2. 본문은 짧게 쓴다. `- `로 구분한 변경 내용 최대 5줄과 이슈 연결만 넣는다.
    ```
    ### PR 내용
@@ -173,6 +172,7 @@ Verification Checklist와 결과가 사용자 목적을 이루는지 확인한�
    ### 관련 이슈
    resolved #<이슈번호>
    ```
+3. `gh pr checks <PR번호> --watch`로 CI를 확인한다. 실패하면 고쳐 같은 브랜치에 push하고 다시 확인한다.
 
 ### 6단계: 보고와 쉬운 설명
 
@@ -180,22 +180,22 @@ Verification Checklist와 결과가 사용자 목적을 이루는지 확인한�
 2. 쉬운 설명: 코드를 모르는 사람에게 설명하듯 이 기능이 사용자의 목적을 어떻게 이루는지, 이제 무엇을 할 수 있는지,
    어떤 경우에 막히는지를 쉬운 말로 쓴다. 전문 용어는 꼭 필요할 때만 쓰고 바로 풀어 쓴다.
    비유는 최소로 하고, 사용자가 요청하면 그때 비유로 다시 설명한다.
-3. 개발자용 요약: 커밋별 변경과 리뷰 포인트(파일:줄), 가정, Checklist 결과(항목마다 통과/실패/해당 없음),
+3. 개발자용 요약: 커밋별 변경과 리뷰 포인트(파일:줄), 가정, Checklist 결과(`docs/verification.md` 증거 형식, CI 결과 포함),
    발견했지만 고치지 않은 문제.
 4. 다음에 할 일을 1~2개 제안한다.
 
 ## 5. Verification Checklist
 
-모든 작업 완료 전에 아래 항목을 확인하고, 항목마다 통과/실패/해당 없음과 근거를 보고한다.
-실행하지 못한 항목은 통과로 표시하지 않는다. 실패나 미실행이 하나라도 있으면 완료라고 하지 않는다.
+모든 작업 완료 전에 아래 항목을 `docs/verification.md` 증거 형식(명령, 종료 코드, 결과, SHA)으로 보고한다.
+미실행은 통과가 아니다. 실패나 미실행이 하나라도 있으면 완료라고 하지 않는다. 해당 없음은 이유를 적는다.
 
 - [ ] 컨벤션: 변경한 경로의 AGENTS.md에 있는 Conventions를 모두 준수한다.
-- [ ] 빌드: `./gradlew build`가 통과한다(테스트 포함).
-  이번 변경이 원인이면 고친 뒤 재실행한다. 아니면 고치지 않고 실패로 보고한다.
-- [ ] 성능:
-  - 연관 엔티티를 반복문 안에서 조회하지 않는다(필요 시 fetch join, `@EntityGraph`, batch size 사용).
-  - 목록 조회에는 페이징을 적용한다.
-- [ ] 동시성: 동시 요청이 가능한 로직(제출, 채점 결과 갱신, 점수/랭킹 등)에는
-  락, 유니크 제약, 원자적 업데이트 중 무엇으로 보호했는지 명시한다. 대상이 없으면 해당 없음으로 적는다.
-- [ ] 변경 범위: `git status --short`가 비어 있고, `git diff <기준SHA>...HEAD`에
-  작업과 무관한 수정(포맷팅, 리네이밍, 리팩터링)이 없다.
+- [ ] 빌드: `./gradlew build`가 마지막 커밋에서 통과한다. 이번 변경이 원인이면 고치고, 아니면 고치지 않고 실패로 보고한다.
+- [ ] 명세-테스트 대응: 명세의 규칙·경계값·오류·HTTP 계약마다 테스트와 레드 증거가 있다(2절).
+- [ ] 테스트 무결성: 테스트 삭제·건너뛰기·단언 약화가 없거나 명세 근거가 있다. 버그 수정은 되돌림 검사에서 실패한다(3절).
+- [ ] 실행 검증: API 변경이 있으면 실제 MySQL로 띄워 성공·오류 경로를 호출했다(4절).
+- [ ] 독립 리뷰: 새 맥락 리뷰어의 지적마다 고쳤거나 고치지 않은 이유를 적었다(5절).
+- [ ] CI: PR의 CI가 통과한다(6절).
+- [ ] 성능: 반복문 안에서 연관 엔티티를 조회하지 않고(fetch join, `@EntityGraph`, batch size), 목록에는 페이징을 적용한다.
+- [ ] 동시성: 동시 요청이 가능한 로직(제출, 채점 결과, 점수/랭킹 등)을 락·유니크 제약·원자적 업데이트 중 무엇으로 보호했는지 적는다.
+- [ ] 변경 범위: `git status --short`가 비어 있고, `git diff <기준SHA>...HEAD`에 무관한 포맷팅·리네이밍·리팩터링이 없다.

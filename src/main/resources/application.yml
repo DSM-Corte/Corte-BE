@@ -44,3 +44,6 @@ judge:
   session-seconds: ${JUDGE_SESSION_SECONDS:120}
   compile-seconds: ${JUDGE_COMPILE_SECONDS:60}
   output-bytes: ${JUDGE_OUTPUT_BYTES:1048576}
+
+admin:
+  emails: ${ADMIN_EMAILS:}
