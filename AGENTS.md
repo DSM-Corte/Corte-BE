@@ -146,8 +146,7 @@ global/
 - TDD는 명세의 동작 단위(규칙, 경계값, 오류 경로, HTTP 계약)로 한다.
   실패하는 테스트를 먼저 쓰고, 실패 이유가 "기능이 없어서"인지 확인한 뒤 구현한다.
   getter뿐인 엔티티나 단순 위임처럼 검증할 동작이 없는 코드에는 별도 테스트를 만들지 않는다.
-- 커밋은 동작하는 단위로 나눈다(예: `feat: 제출 엔티티와 저장소 추가` → `feat: 제출 생성 API 추가`).
-  커밋 전 `./gradlew build`가 통과해야 한다.
+- 커밋은 동작하는 단위로 나눈다(예: `feat: 제출 엔티티와 저장소 추가` → `feat: 제출 생성 API 추가`). 커밋 전 `./gradlew build`가 통과해야 한다.
 - 명세에 없는 결정은 가장 단순한 방법으로 정하고 보고서의 "가정"에 적는다.
 
 ### 멈추는 경우 (2단계 이후)
@@ -163,7 +162,8 @@ Verification Checklist와 결과가 사용자 목적을 이루는지 확인한�
 
 ### 5단계: push와 PR
 
-1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일>`.
+1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일> --assignee @me --reviewer <리뷰어>`.
+   `<리뷰어>`는 이름을 고정하지 않고 매번 조회한다: 저장소 협업자(`gh api repos/{owner}/{repo}/collaborators -q '.[].login'`) 중 현재 `gh` 사용자(`gh api user -q .login`)를 뺀 전원을 쉼표로 잇는다.
 2. 본문은 짧게 쓴다. `- `로 구분한 변경 내용 최대 5줄과 이슈 연결만 넣는다.
    ```
    ### PR 내용
