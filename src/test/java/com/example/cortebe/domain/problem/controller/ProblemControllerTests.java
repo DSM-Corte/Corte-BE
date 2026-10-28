@@ -39,6 +39,41 @@ class ProblemControllerTests {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Test
+    void 언어별_메모리를_등록하고_부분수정과_초기화를_지원한다() throws Exception {
+        // given
+        String request = CREATE_REQUEST.replace("\"timeLimitMs\": 1000", "\"timeLimitMs\": 1000, \"languageMemoryLimitsMb\": {\"C\":6,\"JAVA\":1024}");
+        String location = performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(request))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.memoryLimitMb").value(256))
+            .andExpect(jsonPath("$.languageMemoryLimitsMb.C").value(6))
+            .andExpect(jsonPath("$.languageMemoryLimitsMb.JAVA").value(1024))
+            .andReturn().getResponse().getHeader("Location");
+        // when & then
+        mockMvc.perform(get(location)).andExpect(status().isOk()).andExpect(jsonPath("$.languageMemoryLimitsMb.C").value(6));
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"변경\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.languageMemoryLimitsMb.JAVA").value(1024));
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"languageMemoryLimitsMb\":{\"PYTHON\":64}}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.languageMemoryLimitsMb.PYTHON").value(64))
+            .andExpect(jsonPath("$.languageMemoryLimitsMb.C").doesNotExist());
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"languageMemoryLimitsMb\":{}}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.languageMemoryLimitsMb").isEmpty());
+    }
+
+    @Test
+    void 언어별_메모리_범위와_키를_검증한다() throws Exception {
+        // given
+        String location = performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST))
+            .andExpect(status().isCreated()).andReturn().getResponse().getHeader("Location");
+        for (String invalid : new String[]{"{\"JAVA\":5}", "{\"JAVA\":1025}", "{\"JAVA\":null}", "{\"UNKNOWN\":64}"}) {
+            String request = CREATE_REQUEST.replace("\"timeLimitMs\": 1000", "\"timeLimitMs\": 1000, \"languageMemoryLimitsMb\":" + invalid);
+            // when & then
+            performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isBadRequest());
+            performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"languageMemoryLimitsMb\":" + invalid + "}"))
+                .andExpect(status().isBadRequest());
+        }
+    }
+
     private static final String CREATE_REQUEST = """
         {
             "title": "두 수의 합",

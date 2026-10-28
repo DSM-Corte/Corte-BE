@@ -39,6 +39,7 @@ public class ProblemService {
             .category(request.getCategory())
             .memoryLimitMb(request.getMemoryLimitMb())
             .timeLimitMs(request.getTimeLimitMs())
+            .languageMemoryLimitsMb(request.getLanguageMemoryLimitsMb())
             .tags(normalizeTags(request.getTags()))
             .build());
         return toResponse(problem);
@@ -92,6 +93,7 @@ public class ProblemService {
         Problem problem = findProblem(id);
         problem.update(request.getTitle(), request.getDescription(), request.getCategory(), request.getMemoryLimitMb(),
             request.getTimeLimitMs(), normalizeTags(request.getTags()));
+        problem.updateLanguageMemoryLimits(request.getLanguageMemoryLimitsMb());
         return toResponse(problem);
     }
 
@@ -118,6 +120,7 @@ public class ProblemService {
             .category(problem.getCategory())
             .memoryLimitMb(problem.getMemoryLimitMb())
             .timeLimitMs(problem.getTimeLimitMs())
+            .languageMemoryLimitsMb(Map.copyOf(problem.getLanguageMemoryLimitsMb()))
             .tags(new LinkedHashSet<>(problem.getTags()))
             .build();
     }

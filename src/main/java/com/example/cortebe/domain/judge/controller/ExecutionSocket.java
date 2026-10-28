@@ -57,6 +57,7 @@ public class ExecutionSocket extends TextWebSocketHandler {
                         try { connection.session.close(CloseStatus.SERVER_ERROR); } catch (IOException ignored) { }
                     }
                 });
+                if (!connection.session.isOpen()) connection.channel.cancel();
             } else switch (type) {
                 case "stdin" -> connection.channel.write(json.path("data").asText());
                 case "eof" -> connection.channel.eof();

@@ -44,6 +44,9 @@ judge:
   session-seconds: ${JUDGE_SESSION_SECONDS:120}
   compile-seconds: ${JUDGE_COMPILE_SECONDS:60}
   output-bytes: ${JUDGE_OUTPUT_BYTES:1048576}
+  max-concurrent-per-identity: ${JUDGE_MAX_CONCURRENT_PER_IDENTITY:1}
+  connect-seconds: ${JUDGE_CONNECT_SECONDS:10}
+  startup-seconds: ${JUDGE_STARTUP_SECONDS:10}
 
 admin:
   emails: ${ADMIN_EMAILS:}

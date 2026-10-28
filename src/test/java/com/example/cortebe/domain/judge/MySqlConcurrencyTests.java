@@ -67,7 +67,9 @@ class MySqlConcurrencyTests {
     @Test
     void 실제_MySQL에서_스냅샷을_복사하고_중복_실행과_갱신을_막는다() {
         // given
-        Long id = problem();
+        Long id = problems.saveAndFlush(Problem.builder().title("합").description("두 수").category("구현")
+            .timeLimitMs(1000).memoryLimitMb(256)
+            .languageMemoryLimitsMb(java.util.Map.of(Language.PYTHON, 64)).build()).getId();
         Long caseId = cases.create(id, new CreateTestCaseRequest("1 2\n", "3\n", false, 0)).id();
         var job = store.create(null, new CreateJobRequest(id, Language.PYTHON, "print(3)"), true);
         cases.delete(id, caseId);
@@ -75,6 +77,7 @@ class MySqlConcurrencyTests {
         var work = store.claim(job.id());
         // then
         assertThat(work.totalCount()).isEqualTo(1);
+        assertThat(work.snapshot().memoryLimitMb()).isEqualTo(64);
         assertThat(store.cases(job.id(), 0).getFirst().expectedOutput()).isEqualTo("3\n");
         assertThat(store.claim(job.id())).isNull();
         store.finish(job.id(), Verdict.ACCEPTED, 1, 10, null);

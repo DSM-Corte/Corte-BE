@@ -43,6 +43,18 @@ class JobStoreTests {
     @Autowired EntityManager entityManager;
 
     @Test
+    void 제출_스냅샷에는_선택한_언어의_메모리_제한을_고정한다() {
+        // given
+        Long id = problems.saveAndFlush(Problem.builder().title("합").description("두 수").category("구현")
+            .timeLimitMs(1000).memoryLimitMb(256)
+            .languageMemoryLimitsMb(java.util.Map.of(Language.PYTHON, 64)).build()).getId();
+        // when
+        JobResponse created = store.create(null, request(id), false);
+        // then
+        assertThat(store.claim(created.id()).snapshot().memoryLimitMb()).isEqualTo(64);
+    }
+
+    @Test
     void 스냅샷은_순서를_유지하며_8개씩_조회하고_완료후_삭제한다() {
         // given
         Long id = problem();

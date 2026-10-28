@@ -53,13 +53,14 @@ public class JobStore {
         if (request.code().getBytes(StandardCharsets.UTF_8).length > 102400) throw new InvalidInputException();
         User user = userId == null ? null : users.findById(userId).orElseThrow(UnauthorizedException::new);
         Problem problem = problems.findLockedById(request.problemId()).orElseThrow(JudgeNotFoundException::new);
-        if (problem.getMemoryLimitMb() > 1024 || problem.getTimeLimitMs() > 60000) throw new JudgeConflictException();
+        int memoryMb = problem.memoryLimitFor(request.language());
+        if (memoryMb < 6 || memoryMb > 1024 || problem.getTimeLimitMs() > 60000) throw new JudgeConflictException();
         int count = submission ? Math.toIntExact(testCases.countByProblemId(problem.getId())) : 0;
         if (submission && count == 0) throw new JudgeConflictException();
         String token = token();
         JudgeJob job = jobs.saveAndFlush(JudgeJob.builder().problem(problem).author(user).submission(submission)
             .language(request.language()).code(request.code()).tokenHash(hash(token)).totalCount(count)
-            .snapshot(mapper.writeValueAsString(new Snapshot(problem.getTimeLimitMs(), problem.getMemoryLimitMb()))).build());
+            .snapshot(mapper.writeValueAsString(new Snapshot(problem.getTimeLimitMs(), memoryMb))).build());
         if (submission && snapshots.copy(job.getId(), problem.getId()) != count) throw new JudgeConflictException();
         return JobResponse.builder().id(job.getId()).verdict(job.getVerdict()).totalCount(job.getTotalCount())
             .accessToken(userId == null || !submission ? token : null)
@@ -102,6 +103,12 @@ public class JobStore {
     @Transactional
     public void reject(Long id) {
         jobs.finish(id, Verdict.QUEUED, Verdict.SYSTEM_ERROR, 0, 0, "실행 요청을 처리하지 못했습니다.", LocalDateTime.now());
+        snapshots.deleteAllByJobId(id);
+    }
+
+    @Transactional
+    public void cancelQueued(Long id) {
+        jobs.finish(id, Verdict.QUEUED, Verdict.CANCELLED, 0, 0, "연결 대기 또는 실행이 취소되었습니다.", LocalDateTime.now());
         snapshots.deleteAllByJobId(id);
     }
 

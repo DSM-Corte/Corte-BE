@@ -1,8 +1,12 @@
 package com.example.cortebe.domain.problem.entity;
 
+import com.example.cortebe.domain.judge.runner.Language;
 import jakarta.persistence.Column;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.MapKeyEnumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +22,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.LinkedHashSet;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Set;
 
 @Entity
@@ -47,6 +53,14 @@ public class Problem {
     private Integer timeLimitMs;
 
     @ElementCollection
+    @CollectionTable(name = "problem_language_limits", joinColumns = @JoinColumn(name = "problem_id"),
+        uniqueConstraints = @UniqueConstraint(name = "uk_problem_language_limits_problem_language", columnNames = {"problem_id", "language"}))
+    @MapKeyColumn(name = "language", length = 20)
+    @MapKeyEnumerated(EnumType.STRING)
+    @Column(name = "memory_limit_mb", nullable = false)
+    private Map<Language, Integer> languageMemoryLimitsMb = new EnumMap<>(Language.class);
+
+    @ElementCollection
     @CollectionTable(name = "problem_tags", joinColumns = @JoinColumn(name = "problem_id"),
         uniqueConstraints = @UniqueConstraint(name = "uk_problem_tags_problem_tag", columnNames = {"problem_id", "tag"}),
         indexes = @Index(name = "idx_problem_tags_tag_problem", columnList = "tag,problem_id"))
@@ -55,12 +69,13 @@ public class Problem {
 
     @Builder
     private Problem(String title, String description, String category, Integer memoryLimitMb,
-                    Integer timeLimitMs, Set<String> tags) {
+                    Integer timeLimitMs, Set<String> tags, Map<Language, Integer> languageMemoryLimitsMb) {
         this.title = title;
         this.description = description;
         this.category = category;
         this.memoryLimitMb = memoryLimitMb;
         this.timeLimitMs = timeLimitMs;
+        if (languageMemoryLimitsMb != null) this.languageMemoryLimitsMb.putAll(languageMemoryLimitsMb);
         if (tags != null) {
             this.tags.addAll(tags);
         }
@@ -87,5 +102,16 @@ public class Problem {
             this.tags.clear();
             this.tags.addAll(tags);
         }
+    }
+
+    public void updateLanguageMemoryLimits(Map<Language, Integer> limits) {
+        if (limits != null) {
+            languageMemoryLimitsMb.clear();
+            languageMemoryLimitsMb.putAll(limits);
+        }
+    }
+
+    public int memoryLimitFor(Language language) {
+        return languageMemoryLimitsMb.getOrDefault(language, memoryLimitMb);
     }
 }

@@ -70,3 +70,43 @@
 - 스냅샷은 `judge_case_snapshots`로 DB 내부 복사하고 8개씩 조회한다. 실행 중 트랜잭션은 없다.
 - WebSocket은 기본 localhost:5173/3000 Origin, 첫 인증 10초, 메시지 16KB, 입력 합계 1MB,
   연결 64개·15분 수명으로 제한한다. 출력은 UTF-8 바이트 손실을 막기 위해 Base64로 전달한다.
+
+## PR #38 리뷰 반영 명세
+
+- 리뷰: https://github.com/DSM-Corte/Corte-BE/pull/38#issuecomment-6462000109
+- 제출당 한 번만 컴파일한다. 결과물만 새 케이스 컨테이너로 전달하여 파일·프로세스 격리를 유지한다.
+  호스트에 결과물을 추출하거나 호스트 폴더를 마운트하지 않는다.
+- 직접 실행은 인증된 WebSocket 연결 후에만 대기열에 넣는다. 접수 후 기본 10초 이내 미연결이면 취소한다.
+- IP·회원별 동시 접수(대기 포함)는 기본 1개이며 완료·취소·접수 실패 때 반환한다.
+- 연결 전 출력 기록을 제거한다. 실행은 연결 이후 시작하고, 연결 후 전송 버퍼·출력 바이트 제한을 유지한다.
+- 시작 복구는 준비 단계에서 끝내고 복구 완료 전에 접수하지 않는다.
+- 컴파일의 시간·메모리·출력 제한 초과는 COMPILE_ERROR와 해당 사유로 반환한다.
+- 실행 시간은 Docker 준비·컴파일·Java/.NET 기본 기동을 제외하고 사용자 진입 신호부터 측정한다.
+  사용자 코드의 초기화·라이브러리 로딩·입출력 대기는 실행 시간에 포함한다. 준비에는 별도 유한 제한을 적용한다.
+- 승인한 API 확장: 기존 memoryLimitMb는 기본값으로 유지하고, 생성·수정에 선택 Map languageMemoryLimitsMb를 추가한다.
+  키는 기존 Language enum, 값은 6~1024MB이다. 해당 언어 설정이 있으면 우선 적용하고 제출 스냅샷에 고정한다.
+  null·생략은 유지, 빈 Map은 언어별 설정 제거이다. 기존 클라이언트·기존 문제는 기본값을 계속 사용한다.
+- PR 제목·본문도 저장소 형식에 맞춘다. 연결 권한이 없는 경우 사용자가 적용할 내용을 제공하며 로컬 Git 인증을 읽지 않는다.
+
+### 리뷰 요구사항-테스트 대응
+
+| 항목 | 테스트 | 레드·회귀 증거 |
+| --- | --- | --- |
+| 컴파일 재사용과 케이스 파일 격리 | DockerRunnerTests#한_번_준비한_코드로_여러_케이스를_실행하고_파일은_격리한다; JobManagerTests#여러_케이스를_채점할_때_준비는_한_번만_수행한다 | 최초 compileTestJava: prepare 메서드 없음. 이후 coordinator에서 prepare 1회·execute 2회·close 1회 확인 |
+| 연결 전 실행 금지와 출력 기록 제거 | JobManagerTests#직접_실행은_연결하기_전에는_작업자를_차지하지_않는다 | 기존 JobManager로 되돌리면 연결 전 claim이 호출되어 기대 false가 true로 실패 |
+| 미연결 만료와 IP별 동시 작업 제한 | JobManagerTests#미연결_직접실행은_만료되고_동일_IP의_자리를_반환한다 | 기존 JobManager에서 두 번째 동일 IP 접수가 거절되지 않아 실패 |
+| 대기열 취소의 종료 이벤트와 자리 반환 | JobManagerTests#대기중인_직접실행도_취소하면_종료이벤트와_자리를_반환한다 | 수정 전 이벤트 목록에 exit/CANCELLED가 없어 실패 |
+| 복구 전 접수 차단 | JobManagerTests#복구가_끝나기_전에는_작업을_접수하지_않는다 | 기존 JobManager에서 503 전용 예외 대신 접수 경로로 진행하여 실패 |
+| 사용자 진입 기준 시간·준비 상한·중복 진입 신호 | ExecutionClockTests의 준비시간 제외·준비상한·반복진입 테스트 | 최초 compileTestJava: ExecutionClock 없음 |
+| 종료 후 시간 고정 | ExecutionClockTests#종료후_결과조회와_정리시간을_포함하지_않는다 | 종료 시계 고정을 제거하는 되돌림 검사로 검증 |
+| 컴파일 실패의 단계·사유·실행시간 0 | CompilationResultTests#컴파일_자원초과와_실패는_컴파일오류와_사유를_반환한다 | 최초 compileTestJava: asCompilation 없음 |
+| 언어별 메모리 선택과 스냅샷 고정 | JobStoreTests#제출_스냅샷에는_선택한_언어의_메모리_제한을_고정한다; MySqlConcurrencyTests | 최초 compileTestJava: languageMemoryLimitsMb builder 메서드 없음 |
+| 메모리 등록·유지·교체·초기화·범위·키 | ProblemControllerTests의 언어별 메모리 테스트 2개 | 범위 검증을 제거하는 되돌림 검사로 400 계약 검증 |
+| 복구 삭제 실패 차단·준비 중 취소 보존 | DockerRecoveryTests 2개 | 복구 정상 플래그 조건을 되돌리는 검사. 취소 분기는 Docker 프로세스 스텁으로 준비 중 CANCELLED를 재현 |
+| 기존 6개 언어 입출력·자원 제한·비회원·비공개 보호 | DockerRunnerTests; JudgeEndToEndTests; 기존 JobStoreTests | 기존 회귀 테스트 유지. 프론트엔드 수정 없음 |
+| PR 제목·본문 | GitHub 메타데이터 | 코드 테스트 해당 없음. 연결의 쓰기 권한에 따름 |
+
+되돌림 검사는 위 조건만 잠시 제거하여 실패를 확인한 뒤 수정본으로 즉시 복구한다.
+과거 명세의 테스트를 삭제하거나 단언을 약화하지 않는다. 전역 큐 테스트는 새 IP별 한도와 구분되도록
+서로 다른 IP 3개를 사용한다. Docker 옵션 테스트의 건너뛰기 조건은 기존 것과 같고,
+추가한 재사용 통합 테스트도 실제 Docker 검증에 포함한다.

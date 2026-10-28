@@ -19,6 +19,22 @@ class DockerRunnerTests {
         System.getenv().getOrDefault("JUDGE_DOCKER", "docker"), 2, 16, 30, 120, 60, 1048576));
 
     @Test
+    void 한_번_준비한_코드로_여러_케이스를_실행하고_파일은_격리한다() throws Exception {
+        // given
+        String code = "import os\nprint('dirty' if os.path.exists('/work/changed') else 'clean')\nopen('/work/changed','w').write('x')";
+        try (var program = runner.prepare(Language.PYTHON, code, new AtomicBoolean())) {
+            assertThat(program.compilation().verdict()).isEqualTo(Verdict.FINISHED);
+            for (int i = 0; i < 2; i++) {
+                // when
+                var result = program.execute(256, 10000, new byte[0], ignored -> { }, (type, bytes) -> { }, new AtomicBoolean());
+                // then
+                assertThat(result.verdict()).as(result.stderr()).isEqualTo(Verdict.FINISHED);
+                assertThat(new String(result.stdout(), StandardCharsets.UTF_8)).isEqualTo("clean\n");
+            }
+        }
+    }
+
+    @Test
     void 여섯_언어가_격리된_환경에서_표준입출력을_처리한다() {
         // given
         Map<Language, String> programs = Map.of(
