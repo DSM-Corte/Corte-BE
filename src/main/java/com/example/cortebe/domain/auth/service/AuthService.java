@@ -1,5 +1,6 @@
 package com.example.cortebe.domain.auth.service;
 
+import com.example.cortebe.domain.auth.AdminProperties;
 import com.example.cortebe.domain.auth.dto.LoginRequest;
 import com.example.cortebe.domain.auth.dto.SignupRequest;
 import com.example.cortebe.domain.auth.dto.TokenResponse;
@@ -7,6 +8,7 @@ import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.exception.DuplicateEmailException;
 import com.example.cortebe.domain.user.exception.LoginFailedException;
 import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.global.security.Role;
 import com.example.cortebe.global.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,6 +22,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final AdminProperties adminProperties;
 
     public void signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.email())) {
@@ -48,6 +51,7 @@ public class AuthService {
             throw new LoginFailedException();
         }
 
-        return new TokenResponse(jwtProvider.createAccessToken(user.getId()));
+        Role role = adminProperties.isAdmin(user.getEmail()) ? Role.ADMIN : Role.USER;
+        return new TokenResponse(jwtProvider.createAccessToken(user.getId(), role));
     }
 }

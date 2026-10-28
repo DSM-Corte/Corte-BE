@@ -34,3 +34,6 @@ github:
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: ${JWT_ACCESS_EXPIRATION:30m}
+
+admin:
+  emails: ${ADMIN_EMAILS:}
