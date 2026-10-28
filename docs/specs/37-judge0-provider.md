@@ -39,13 +39,13 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
-| 모두 맞으면 ACCEPTED, 시간·메모리 최댓값, 케이스별 결과 순서 | | |
-| 하나라도 틀리면 처음 실패한 판정이 전체 판정 | | |
-| 채점 중인 케이스는 끝날 때까지 다시 조회 | | |
-| 21개 이상이면 20개씩 나눠 제출·조회 | | |
-| base64·언어 ID·컴파일 옵션·단위 변환 | | |
-| 모르는 상태 ID는 INTERNAL_ERROR | | |
-| 제출 HTTP 오류·토큰 누락이면 J001 | | |
-| 조회 HTTP 오류면 J002 | | |
-| 진척 없이 idle-timeout이 지나면 J003 | | |
-| 테스트케이스가 비어 있으면 IllegalArgumentException | | |
+| 모두 맞으면 ACCEPTED, 시간·메모리 최댓값, 케이스별 결과 순서, 시간 ms 변환 | Judge0JudgeProviderTests#모든_테스트케이스가_맞으면_ACCEPTED와_시간_메모리_최댓값과_케이스별_결과를_돌려준다 | UnsupportedOperationException(Provider 미구현) |
+| 하나라도 틀리면 처음 실패한 판정이 전체 판정, 측정값 없으면 null | Judge0JudgeProviderTests#하나라도_틀리면_요청_순서에서_처음_실패한_판정이_전체_판정이다 | UnsupportedOperationException(Provider 미구현) |
+| 채점 중인 케이스는 끝날 때까지 다시 조회(끝나지 않은 토큰만) | Judge0JudgeProviderTests#채점_중인_테스트케이스는_끝날_때까지_다시_조회한다 | UnsupportedOperationException(Provider 미구현) |
+| 21개 이상이면 20개씩 나눠 제출·조회 | Judge0JudgeProviderTests#테스트케이스가_20개를_넘으면_20개씩_나눠_제출하고_조회한다 | UnsupportedOperationException(Provider 미구현) |
+| base64·언어 ID·컴파일 옵션·단위 변환 | Judge0JudgeProviderTests#코드와_입출력은_base64로_언어_ID와_제한은_Judge0_단위로_보낸다, Judge0JudgeProviderTests#컴파일_옵션이_없는_언어는_compiler_options를_보내지_않는다 | UnsupportedOperationException(Provider 미구현) |
+| 상태 ID 3~14 매핑, 모르는 ID는 INTERNAL_ERROR | Judge0JudgeProviderTests#Judge0_상태_ID를_판정으로_바꾸고_모르는_ID는_INTERNAL_ERROR로_본다(13건) | UnsupportedOperationException(Provider 미구현) |
+| 제출 HTTP 오류·토큰 누락이면 J001 | Judge0JudgeProviderTests#제출이_HTTP_오류면_JudgeSubmitFailedException을_던진다, Judge0JudgeProviderTests#제출_응답에_토큰이_없으면_JudgeSubmitFailedException을_던진다 | UnsupportedOperationException이 던져져 JudgeSubmitFailedException 아님 |
+| 조회 HTTP 오류면 J002 | Judge0JudgeProviderTests#결과_조회가_HTTP_오류면_JudgeFetchFailedException을_던진다 | UnsupportedOperationException이 던져져 JudgeFetchFailedException 아님 |
+| 진척 없이 idle-timeout이 지나면 J003 | Judge0JudgeProviderTests#끝난_케이스가_idle_timeout_동안_늘지_않으면_JudgeTimeoutException을_던진다 | UnsupportedOperationException이 던져져 JudgeTimeoutException 아님 |
+| 테스트케이스가 비어 있으면 IllegalArgumentException | Judge0JudgeProviderTests#테스트케이스가_비어_있으면_IllegalArgumentException을_던진다 | UnsupportedOperationException이 던져져 IllegalArgumentException 아님 |

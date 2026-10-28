@@ -14,6 +14,12 @@ spring:
     # Spring Cloud 2025.1.x는 Boot 4.0 대상이라 Boot 4.1에서 호환성 검사를 끈다
     compatibility-verifier:
       enabled: false
+    openfeign:
+      client:
+        config:
+          judge0:
+            connect-timeout: ${JUDGE0_REQUEST_TIMEOUT_MS:5000}
+            read-timeout: ${JUDGE0_REQUEST_TIMEOUT_MS:5000}
 
 springdoc:
   api-docs:
@@ -30,6 +36,11 @@ github:
   app:
     client-id: ${GITHUB_APP_CLIENT_ID:}
     private-key: ${GITHUB_APP_PRIVATE_KEY:}
+
+judge0:
+  url: ${JUDGE0_URL:http://localhost:2358}
+  poll-interval: ${JUDGE0_POLL_INTERVAL:1s}
+  idle-timeout: ${JUDGE0_IDLE_TIMEOUT:2m}
 
 jwt:
   secret: ${JWT_SECRET}
