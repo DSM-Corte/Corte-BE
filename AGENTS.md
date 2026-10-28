@@ -29,6 +29,7 @@ domain/<기능>/{controller, service, entity, repository, dto, exception}   # �
   auth/      회원가입·로그인          user/     회원 엔티티·오류 코드
   board/     게시판                   problem/  문제
   github/    풀이를 사용자 GitHub 레포에 커밋 (client, client/dto, event, service)
+  judge/     Judge0 채점 Provider (client, client/dto, dto, service, exception)
 global/
   config/    Async, Filter, JpaAuditing, OpenApi, Security
   error/     GlobalExceptionFilter, GlobalExceptionHandler, exception/, response/
@@ -48,7 +49,8 @@ global/
 | 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제 |
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 이벤트를 발행하는 채점 코드는 없다 |
-| 제출, 채점, AI 리뷰, 점수/랭킹 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
+| 채점 Provider | `JudgeProvider.judge`가 Judge0 1.13.1(compose)에 테스트케이스를 제출하고 전체 판정과 케이스별 결과를 돌려준다. 호출하는 제출 코드는 없다. 명세 `docs/specs/37-judge0-provider.md` |
+| 제출, 채점 결과 저장, AI 리뷰, 점수/랭킹 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
 
 ### 아키텍처
 
