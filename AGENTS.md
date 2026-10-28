@@ -162,7 +162,7 @@ Verification Checklist와 결과가 사용자 목적을 이루는지 확인한�
 
 ### 5단계: push와 PR
 
-1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일> --assignee @me --reviewer <리뷰어>`.
+1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일> --label <이슈와 같은 라벨> --assignee @me --reviewer <리뷰어>`.
    `<리뷰어>`는 이름을 고정하지 않고 매번 조회한다: 저장소 협업자(`gh api repos/{owner}/{repo}/collaborators -q '.[].login'`) 중 현재 `gh` 사용자(`gh api user -q .login`)를 뺀 전원을 쉼표로 잇는다.
 2. 본문은 짧게 쓴다. `- `로 구분한 변경 내용 최대 5줄과 이슈 연결만 넣는다.
    ```
