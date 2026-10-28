@@ -37,8 +37,8 @@
 `JwtProvider.createAccessToken(userId)`는 USER 역할로 발급한다.
 서버에서 관리자임을 확인한 뒤 `createAccessToken(userId, Role.ADMIN)`으로 발급한 서명된 토큰만
 관리자 권한을 가진다. 역할 정보가 없는 기존 JWT는 USER로 취급한다.
-현재 로그인·관리자 지정 API나 DB 역할 관리 기능은 구현하지 않았으므로,
-향후 로그인 기능에서 신뢰할 수 있는 서버 측 역할 정보와 연결해야 한다.
+로그인(`POST /auth/login`)은 `ADMIN_EMAILS` 환경 변수(쉼표 구분)에 있는 이메일이면 ADMIN, 아니면 USER 토큰을 발급한다.
+관리자 지정 API와 DB 역할 컬럼은 없고, 목록을 바꾸면 다음 로그인부터 적용된다.
 
 ## 생성
 

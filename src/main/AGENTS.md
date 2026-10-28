@@ -71,6 +71,7 @@
 ## 기존 코드에서 정해진 것
 
 - 인증: access token만 쓴다. subject는 userId 문자열, `role` 클레임은 `USER`/`ADMIN`. 리프레시 토큰은 없다.
+  ADMIN은 `ADMIN_EMAILS`에 있는 이메일(공백 제거, 대소문자 무시)로 로그인한 회원이다.
 - 비동기 작업은 실패해도 재시도하지 않고 ERROR 로그만 남긴다(best-effort).
 - 외부 API 주소는 프로퍼티로 바꿀 수 있게 한다(`github.api-url`). 테스트는 이 값을 스텁 서버 주소로 바꾼다.
 - GitHub 저장 형식: 디렉터리 `"{problemId}. {제목}"`(`/`·`\`·제어문자는 `_`), 파일 `README.md`·`Main.{확장자}`,
