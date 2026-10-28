@@ -45,12 +45,14 @@ class Judge0JudgeProviderTests {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final List<JsonNode> submitBodies = new CopyOnWriteArrayList<>();
     private static final List<String> submitQueries = new CopyOnWriteArrayList<>();
+    private static final List<String> fetchQueries = new CopyOnWriteArrayList<>();
     private static final List<List<String>> fetchedTokens = new CopyOnWriteArrayList<>();
     private static final Map<String, FakeCase> fakeCases = new ConcurrentHashMap<>();
     private static final List<FakeCase> nextCases = new CopyOnWriteArrayList<>();
     private static volatile int submitStatus;
     private static volatile String submitResponseOverride;
     private static volatile int fetchStatus;
+    private static volatile String fetchResponseOverride;
     private static HttpServer server;
 
     @Autowired
@@ -69,10 +71,11 @@ class Judge0JudgeProviderTests {
                 status = submitStatus;
                 response = submitResponseOverride != null ? submitResponseOverride : issueTokens(body.get("submissions").size());
             } else {
+                fetchQueries.add(exchange.getRequestURI().getRawQuery());
                 List<String> tokens = Arrays.asList(queryParam(exchange.getRequestURI().getRawQuery(), "tokens").split(","));
                 fetchedTokens.add(tokens);
                 status = fetchStatus;
-                response = submissions(tokens);
+                response = fetchResponseOverride != null ? fetchResponseOverride : submissions(tokens);
             }
             byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -92,19 +95,21 @@ class Judge0JudgeProviderTests {
     static void judge0Properties(DynamicPropertyRegistry registry) {
         registry.add("judge0.url", () -> "http://localhost:" + server.getAddress().getPort());
         registry.add("judge0.poll-interval", () -> "10ms");
-        registry.add("judge0.idle-timeout", () -> "300ms");
+        registry.add("judge0.idle-timeout", () -> "1s");
     }
 
     @BeforeEach
     void reset() {
         submitBodies.clear();
         submitQueries.clear();
+        fetchQueries.clear();
         fetchedTokens.clear();
         fakeCases.clear();
         nextCases.clear();
         submitStatus = 201;
         submitResponseOverride = null;
         fetchStatus = 200;
+        fetchResponseOverride = null;
     }
 
     @Test
@@ -159,6 +164,20 @@ class Judge0JudgeProviderTests {
         assertThat(fetchedTokens.get(0)).containsExactly("t0", "t1");
         assertThat(fetchedTokens.get(1)).containsExactly("t0");
         assertThat(fetchedTokens.get(2)).containsExactly("t0");
+    }
+
+    @Test
+    void 결과_조회는_필요한_필드를_한_번에_base64로_요청한다() {
+        // given
+        givenCase("0.001", 100L, 3);
+
+        // when
+        judgeProvider.judge(request(JudgeLanguage.PYTHON, 1));
+
+        // then
+        String query = fetchQueries.getFirst();
+        assertThat(queryParams(query, "fields")).containsExactly("token,status,time,memory");
+        assertThat(queryParams(query, "base64_encoded")).containsExactly("true");
     }
 
     @Test
@@ -258,6 +277,40 @@ class Judge0JudgeProviderTests {
     }
 
     @Test
+    void 제출_응답의_토큰_개수가_제출_개수와_다르면_JudgeSubmitFailedException을_던진다() {
+        // given
+        givenCase("0.001", 100L, 3);
+        givenCase("0.001", 100L, 3);
+        submitResponseOverride = "[{\"token\":\"t0\"}]";
+
+        // when & then
+        assertThatThrownBy(() -> judgeProvider.judge(request(JudgeLanguage.PYTHON, 2)))
+            .isInstanceOf(JudgeSubmitFailedException.class);
+    }
+
+    @Test
+    void 결과_조회_응답에_submissions가_없으면_JudgeFetchFailedException을_던진다() {
+        // given
+        givenCase("0.001", 100L, 3);
+        fetchResponseOverride = "{}";
+
+        // when & then
+        assertThatThrownBy(() -> judgeProvider.judge(request(JudgeLanguage.PYTHON, 1)))
+            .isInstanceOf(JudgeFetchFailedException.class);
+    }
+
+    @Test
+    void 결과_조회_응답에_status나_token이_없으면_JudgeFetchFailedException을_던진다() {
+        // given
+        givenCase("0.001", 100L, 3);
+        fetchResponseOverride = "{\"submissions\":[{\"memory\":100}]}";
+
+        // when & then
+        assertThatThrownBy(() -> judgeProvider.judge(request(JudgeLanguage.PYTHON, 1)))
+            .isInstanceOf(JudgeFetchFailedException.class);
+    }
+
+    @Test
     void 결과_조회가_HTTP_오류면_JudgeFetchFailedException을_던진다() {
         // given
         givenCase("0.001", 100L, 3);
@@ -324,12 +377,15 @@ class Judge0JudgeProviderTests {
     }
 
     private static String queryParam(String rawQuery, String name) {
+        return queryParams(rawQuery, name).getFirst();
+    }
+
+    private static List<String> queryParams(String rawQuery, String name) {
         return Arrays.stream(rawQuery.split("&"))
             .map(pair -> pair.split("=", 2))
             .filter(pair -> pair[0].equals(name))
             .map(pair -> URLDecoder.decode(pair[1], StandardCharsets.UTF_8))
-            .findFirst()
-            .orElseThrow();
+            .toList();
     }
 
     private static String decode(JsonNode node) {

@@ -122,12 +122,17 @@ public class Judge0JudgeProvider implements JudgeProvider {
     private List<SubmissionResponse> fetch(List<String> tokens) {
         BatchResponse response;
         try {
-            response = judge0Client.getSubmissions(String.join(",", tokens));
+            response = judge0Client.getSubmissions(String.join(",", tokens), Judge0Client.SUBMISSION_FIELDS);
         } catch (FeignException e) {
             log.warn("Judge0 결과 조회가 실패했습니다: {}", e.getMessage());
             throw new JudgeFetchFailedException();
         }
         if (response == null || response.submissions() == null) {
+            throw new JudgeFetchFailedException();
+        }
+        if (response.submissions().stream().filter(Objects::nonNull)
+            .anyMatch(submission -> submission.token() == null || submission.status() == null || submission.status().id() == null)) {
+            log.warn("Judge0 결과 조회 응답이 올바르지 않습니다: {}", response);
             throw new JudgeFetchFailedException();
         }
         return response.submissions();
