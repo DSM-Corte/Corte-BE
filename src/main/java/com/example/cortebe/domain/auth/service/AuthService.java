@@ -15,9 +15,11 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AuthService {
 
     private static final String EMAIL_UNIQUE_CONSTRAINT = "uk_users_email";
@@ -27,6 +29,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final AdminProperties adminProperties;
 
+    @Transactional
     public void signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException();
@@ -50,10 +53,10 @@ public class AuthService {
     }
 
     public TokenResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(request.email())
             .orElseThrow(() -> new LoginFailedException());
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new LoginFailedException();
         }
 
@@ -62,14 +65,16 @@ public class AuthService {
     }
 
     private boolean isEmailUniqueViolation(DataIntegrityViolationException e) {
-        if (!(e.getCause() instanceof ConstraintViolationException cause)
-            || cause.getKind() != ConstraintViolationException.ConstraintKind.UNIQUE
-            || cause.getConstraintName() == null) {
+        if (!(e.getCause() instanceof ConstraintViolationException cause)) {
             return false;
         }
-        // DB마다 이름 형태가 달라서(H2: "PUBLIC.UK_USERS_EMAIL INDEX ...") 첫 공백 앞, 마지막 . 뒤만 비교한다
-        String name = cause.getConstraintName().split(" ")[0];
-        name = name.substring(name.lastIndexOf('.') + 1);
-        return name.equalsIgnoreCase(EMAIL_UNIQUE_CONSTRAINT);
+
+        String constraintName = cause.getConstraintName();
+        if (constraintName == null) {
+            return false;
+        }
+
+        // DB마다 이름 앞뒤에 다른 글자가 붙어서(H2: "PUBLIC.UK_USERS_EMAIL INDEX ...") 이름이 들어 있는지만 본다
+        return constraintName.toLowerCase().contains(EMAIL_UNIQUE_CONSTRAINT);
     }
 }

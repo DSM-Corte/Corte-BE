@@ -10,7 +10,15 @@ public record AdminProperties(
 ) {
 
     public boolean isAdmin(String email) {
-        return emails != null && emails.stream()
-            .anyMatch(adminEmail -> adminEmail.trim().equalsIgnoreCase(email));
+        if (emails == null) {
+            return false;
+        }
+
+        for (String adminEmail : emails) {
+            if (adminEmail.trim().equalsIgnoreCase(email)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
