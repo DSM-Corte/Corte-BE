@@ -41,6 +41,12 @@ public class JobController {
     public ResponseEntity<JobResponse> execute(@AuthenticationPrincipal Long userId,
         @Valid @RequestBody CreateJobRequest body, HttpServletRequest request) {
         JobResponse result = manager.create(userId, request.getRemoteAddr(), body, false);
-        return ResponseEntity.created(URI.create("/api/executions/" + result.id() + "/stream")).body(result);
+        return ResponseEntity.created(URI.create("/api/executions/" + result.id())).body(result);
+    }
+
+    @GetMapping("/api/executions/{id}")
+    public JobResponse getExecution(@PathVariable Long id, @AuthenticationPrincipal Long userId,
+        @RequestHeader(value = "X-Judge-Token", required = false) String token) {
+        return store.get(id, userId, token, false);
     }
 }

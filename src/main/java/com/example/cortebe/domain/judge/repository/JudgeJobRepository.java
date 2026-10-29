@@ -22,8 +22,12 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update JudgeJob j set j.verdict = :verdict, j.passedCount = :passed, j.runtimeMs = :runtime, "
-        + "j.message = :message, j.snapshot = '', j.updatedAt = :now where j.id = :id and j.verdict = :previous")
+        + "j.message = :message, j.snapshot = '', j.stdin = null, j.updatedAt = :now where j.id = :id and j.verdict = :previous")
     int finish(Long id, Verdict previous, Verdict verdict, int passed, long runtime, String message, LocalDateTime now);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update JudgeJob j set j.stdout = :stdout, j.stderr = :stderr, j.stdin = null where j.id = :id")
+    void saveOutput(Long id, String stdout, String stderr);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from JudgeJob j where j.expiresAt is not null and j.expiresAt < :now")
@@ -34,7 +38,7 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
     void deleteExecutions(Long problemId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update JudgeJob j set j.verdict = :failed, j.snapshot = '', j.message = :message "
+    @Query("update JudgeJob j set j.verdict = :failed, j.snapshot = '', j.stdin = null, j.message = :message "
         + "where j.verdict = :queued or j.verdict = :running")
     void failInterrupted(Verdict queued, Verdict running, Verdict failed, String message);
 }

@@ -1,5 +1,47 @@
 # 기능: 문제 테스트케이스 및 격리 실행·제출·채점
 
+> 현재 명세는 아래의 **Judge0 통합 확정 변경**을 우선 적용한다. 이전 Docker·WebSocket 설계와 검증은 변경 이력이다.
+
+## Judge0 통합 확정 변경
+
+- 사용자 승인: 기존 #37 Judge0를 실행·채점 모두에 재사용하며 입력을 먼저 작성하는 방식으로 통일한다.
+  프론트엔드는 수정하지 않는다. 별도 실행기·격리 계층을 만들지 않는다.
+- 통합 기준: 29bff2ddb3b552bc45e038656bdea5765f235ec4, 재사용 브랜치 origin/feature/#37-judge0-provider(31ea217).
+- POST /api/executions는 선택 stdin(UTF-8 1MB)을 받고 201 + /api/executions/{id}를 반환한다.
+  GET /api/executions/{id}에서 상태·stdout·stderr·컴파일 메시지를 조회한다. 기존 WS 주소는 제거한다.
+  streamPath 응답 필드는 null이다. 회원은 본인 JWT, 비회원은 X-Judge-Token으로 소유권을 검사한다.
+- POST/GET /api/submissions와 테스트케이스 CRUD는 유지한다. 케이스·시간·선택 언어의 메모리를 고정한다.
+  제출의 비공개 출력은 반환하지 않으며 비회원 작업을 계정의 풀이 기록으로 연결하지 않는다.
+- Judge0의 C99/CPP17/JAVA/CSHARP/JAVASCRIPT/PYTHON 매핑을 사용한다(C# Mono ID51 추가).
+  격리·컴파일·CPU/메모리 제한은 Judge0가 수행한다. 네트워크 false, 파일당 한도1024KB,
+  CPU 제한+5초(최소5초)의 벽시계 상한을 전달한다. 실행시간은 Judge0 보고 CPU 시간이며
+  이전 자체 진입점 측정 방식과 다르다. 메모리 초과는 Judge0가 구분하지 않아 RUNTIME_ERROR 등 엔진 판정을 따른다.
+- 정답을 엔진에 보내지 않고 실행 성공 stdout의 UTF-8 원본 바이트를 비교한다. 줄바꿈·공백 정규화 없음.
+- 기존 오류 J001~J005 유지, Provider 오류는 J006~J008로 병합한다. 작업 중 통신 실패는 SYSTEM_ERROR로 저장한다.
+- DB에는 nullable stdin/stdout/stderr 컬럼만 추가한다. 기존 데이터 삭제·필수 컬럼 변경은 없다.
+- 기존 원자적 상태 전이·문제 잠금·8개 단위 projection·유한 큐·IP/사용자 제한을 유지한다.
+  외부 HTTP 호출 중 DB 트랜잭션은 없다. 컴파일 재사용은 직접 구현하지 않고 케이스별 처리를 Judge0에 맡긴다.
+- 가정: 단일 인스턴스, Judge0 CE1.13.1 환경. 기존 최신 언어 이미지 대신 해당 엔진 언어 버전을 사용한다.
+- 상세 요청·응답·설정: docs/judge-api.md.
+
+### 통합 테스트 대응
+
+| 명세 항목 | 테스트 | 레드 증거 |
+| --- | --- | --- |
+| 정확한 줄바꿈 비교 | Judge0JudgeProviderTests#엔진이_성공해도_출력의_줄바꿈이_다르면_오답이다 | 기존 Provider는 ACCEPTED 반환(2개 회귀 테스트 실패 확인) |
+| 정답 미전송·네트워크 차단 | Judge0JudgeProviderTests#예상출력을_엔진에_보내지_않고_네트워크를_차단한다 | 기존 expected_output 존재, enable_network 누락 |
+| 다른 토큰 응답 거절 | Judge0JudgeProviderTests#다른_제출의_토큰을_받으면_조회_오류로_거절한다 | JudgeFetchFailedException 미발생으로 실패 |
+| C#·입력·출력·제한 매핑 | Judge0JudgeProviderTests#직접실행은_정답없이_입력을_보내고_표준출력과_오류를_반환한다; JobManagerTests#직접실행은_미리_받은_입력과_언어별_제한을_전달하고_출력을_저장한다 | 기존 Work.stdin·CaseResult.stdout·JudgeLanguage.CSHARP 없음(컴파일 불가) |
+| 원자적 출력 저장·입력 바이트 제한 | JobStoreTests#실행입력은_고정하고_출력은_완료시에만_한번_저장한다; JobStoreTests#실행입력이_UTF8_1MB를_넘으면_거절한다 | 기존 CreateJobRequest.stdin·finishExecution 없음(컴파일 불가) |
+| HTTP 실행201·조회200·토큰403·입력400 | ExecutionApiTests | 기존 실행 Location은 /stream이고 GET 실행 조회 없음 |
+| 비공개 보호·비회원 제출 | ExecutionApiTests#비회원_제출도_기존_공급자에_연결하고_비공개_출력을_노출하지_않는다; JudgeEndToEndTests | 기존 Provider 연결 없음(DockerRunner 직접 호출) |
+| 큐·IP 제한·장애 시 반환·복구 전 거절 | JobManagerTests | 자체 실행기 전용 테스트를 동일 정책의 Provider 경로 테스트로 교체 |
+| 통신·누락 응답·시간 초과·상태 매핑 | 기존 Judge0JudgeProviderTests 전체 | #37의 기존 테스트와 레드 증거를 유지. 상태8은 SIGXFSZ 의미에 따라 OUTPUT_LIMIT으로 변경 |
+| 오류·거절·취소·복구 시 stdin 삭제 | JobStoreTests#실행환경_오류로_종료해도_원본_입력은_지운다; JobStoreTests#접수거절_취소_재시작_복구도_실행입력을_정리한다 | 오류 종료 후 stdin="private input"이 남아 isNull 단언 실패 확인 후 공통 종료·복구 UPDATE에서 삭제 |
+
+자체 DockerRunner/ExecutionClock/컨테이너 복구 전용 테스트는 구현 제거에 따라 삭제한다.
+WS 입력·취소 테스트는 승인된 HTTP 사전 입력·출력 조회 및 권한 테스트로 대체한다. 임의 테스트 건너뛰기나 단언 약화가 아니다.
+
 - 이슈: https://github.com/DSM-Corte/Corte-BE/issues/27
 - 기준 SHA: f2098c0df134f4a2d7d5a71965b36dc2160cc061
 - 작업 브랜치: feature/#27-code-judge

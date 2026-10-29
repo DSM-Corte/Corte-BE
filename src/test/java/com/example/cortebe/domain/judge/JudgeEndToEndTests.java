@@ -11,6 +11,8 @@ import com.example.cortebe.domain.judge.service.TestCaseService;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,7 +27,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
@@ -41,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
     "judge.enabled=true", "spring.datasource.url=jdbc:h2:mem:judgee2e;MODE=MySQL;DB_CLOSE_DELAY=-1"
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@EnabledIfEnvironmentVariable(named = "JUDGE_DOCKER_TESTS", matches = "true")
+@EnabledIfEnvironmentVariable(named = "JUDGE0_TESTS", matches = "true")
 class JudgeEndToEndTests {
     @LocalServerPort int port;
     @Autowired ObjectMapper mapper;
@@ -51,8 +52,9 @@ class JudgeEndToEndTests {
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
     @DynamicPropertySource
-    static void docker(DynamicPropertyRegistry registry) {
-        registry.add("judge.docker", () -> System.getenv().getOrDefault("JUDGE_DOCKER", "docker"));
+    static void judge0(DynamicPropertyRegistry registry) {
+        registry.add("judge0.url", () -> System.getenv().getOrDefault("JUDGE0_URL", "http://localhost:2358"));
+        registry.add("judge0.poll-interval", () -> "100ms");
     }
 
     @Test
@@ -74,56 +76,57 @@ class JudgeEndToEndTests {
     }
 
     @Test
-    void 마지막_줄바꿈이_다르면_오답이고_컴파일오류도_구분한다() throws Exception {
+    void 마지막_줄바꿈이_다르면_오답이고_파이썬_문법오류는_실행오류다() throws Exception {
         // given
         Long id = problem();
         cases.create(id, new CreateTestCaseRequest("", "3\n", false, 0));
         // when & then
         assertThat(result(create("submissions", id, "print(3,end='')")).path("verdict").asText()).isEqualTo("WRONG_ANSWER");
-        assertThat(result(create("submissions", id, "invalid syntax !!!")).path("verdict").asText()).isEqualTo("COMPILE_ERROR");
+        assertThat(result(create("submissions", id, "invalid syntax !!!")).path("verdict").asText()).isEqualTo("RUNTIME_ERROR");
     }
 
     @Test
-    void 웹소켓으로_실행중_입력과_EOF를_전달하고_출력을_받는다() throws Exception {
+    void 미리_작성한_입력을_실행하고_출력과_접근권한을_확인한다() throws Exception {
         // given
         Long id = problem();
-        JobResponse created = create("executions", id, "import sys\nprint('ready',flush=True)\na=sys.stdin.read()\nprint(a,end='')");
-        BlockingQueue<JsonNode> events = new LinkedBlockingQueue<>();
-        WebSocket socket = connect(created, events);
+        JobResponse created = create("executions", id, "import sys;print(sys.stdin.read(),end='')", "hello\n");
         // when
-        StringBuilder output = new StringBuilder();
-        waitFor(events, "ready", output);
-        socket.sendText(mapper.writeValueAsString(Map.of("type", "stdin", "data", "한글\n")), true).join();
-        socket.sendText("{\"type\":\"eof\"}", true).join();
-        JsonNode exit = waitFor(events, "exit", output);
+        JsonNode result = result(created, "executions");
         // then
-        assertThat(exit.path("data").asText()).isEqualTo("FINISHED");
-        assertThat(output.toString()).isEqualTo("ready\n한글\n");
-        socket.sendClose(WebSocket.NORMAL_CLOSURE, "종료").join();
+        assertThat(result.path("verdict").asText()).isEqualTo("FINISHED");
+        assertThat(result.path("stdout").asText()).isEqualTo("hello\n");
+        assertThat(jobs.findById(created.id()).orElseThrow().getAuthor()).isNull();
+        assertThat(get(created.id(), "wrong", "executions").statusCode()).isEqualTo(403);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Language.class)
+    void 여섯_언어의_표준입출력을_기존_Judge0로_실행한다(Language language) throws Exception {
+        // given
+        String code = switch (language) {
+            case C -> "#include <stdio.h>\nint main(){int a,b;scanf(\"%d%d\",&a,&b);printf(\"%d\\n\",a+b);}";
+            case CPP -> "#include <iostream>\nint main(){int a,b;std::cin>>a>>b;std::cout<<a+b<<'\\n';}";
+            case JAVA -> "import java.util.*;class Main{public static void main(String[] a){Scanner s=new Scanner(System.in);System.out.println(s.nextInt()+s.nextInt());}}";
+            case CSHARP -> "using System;class Program{static void Main(){var a=Console.ReadLine().Split();Console.WriteLine(int.Parse(a[0])+int.Parse(a[1]));}}";
+            case JAVASCRIPT -> "const a=require('fs').readFileSync(0,'utf8').trim().split(/\\s+/).map(Number);console.log(a[0]+a[1]);";
+            case PYTHON -> "a,b=map(int,input().split());print(a+b)";
+        };
+        // when
+        JobResponse created = create("executions", problem(), code, "1 2\n", language);
+        JsonNode result = result(created, "executions");
+        // then
+        assertThat(result.path("verdict").asText()).as(result.toString()).isEqualTo("FINISHED");
+        assertThat(result.path("stdout").asText()).isEqualTo("3\n");
     }
 
     @Test
-    void 웹소켓_취소로_대기중인_프로그램을_종료한다() throws Exception {
-        // given
-        JobResponse created = create("executions", problem(), "input()");
-        java.util.concurrent.CompletableFuture<Integer> closed = new java.util.concurrent.CompletableFuture<>();
-        WebSocket forbidden = client.newWebSocketBuilder().buildAsync(
-            URI.create("ws://localhost:" + port + created.streamPath()), new WebSocket.Listener() {
-                public void onOpen(WebSocket socket) { socket.request(Long.MAX_VALUE); }
-                public CompletionStage<?> onClose(WebSocket socket, int code, String reason) {
-                    closed.complete(code); return null;
-                }
-            }).join();
-        forbidden.sendText("{\"type\":\"auth\",\"token\":\"wrong\"}", true).join();
-        assertThat(closed.get(10, TimeUnit.SECONDS)).isEqualTo(1008);
-        BlockingQueue<JsonNode> events = new LinkedBlockingQueue<>();
-        WebSocket socket = connect(created, events);
-        waitFor(events, "ready", new StringBuilder());
-        // when
-        socket.sendText("{\"type\":\"cancel\"}", true).join();
+    void 컴파일언어의_오류는_컴파일진단과_함께_반환한다() throws Exception {
+        // given & when
+        JobResponse created = create("executions", problem(), "int main( invalid syntax", "", Language.C);
+        JsonNode result = result(created, "executions");
         // then
-        assertThat(waitFor(events, "exit", new StringBuilder()).path("data").asText()).isEqualTo("CANCELLED");
-        socket.sendClose(WebSocket.NORMAL_CLOSURE, "종료").join();
+        assertThat(result.path("verdict").asText()).isEqualTo("COMPILE_ERROR");
+        assertThat(result.path("message").asText()).isNotBlank();
     }
 
     private Long problem() {
@@ -132,22 +135,36 @@ class JudgeEndToEndTests {
     }
 
     private JobResponse create(String type, Long id, String code) throws Exception {
+        return create(type, id, code, null);
+    }
+
+    private JobResponse create(String type, Long id, String code, String stdin) throws Exception {
+        return create(type, id, code, stdin, Language.PYTHON);
+    }
+
+    private JobResponse create(String type, Long id, String code, String stdin, Language language) throws Exception {
         HttpResponse<String> response = client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/" + type))
             .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(
-                mapper.writeValueAsString(new CreateJobRequest(id, Language.PYTHON, code)))).build(), HttpResponse.BodyHandlers.ofString());
+                mapper.writeValueAsString(new CreateJobRequest(id, language, code, stdin)))).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
         return mapper.readValue(response.body(), JobResponse.class);
     }
 
     private HttpResponse<String> get(Long id, String token) throws Exception {
-        return client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/submissions/" + id))
+        return get(id, token, "submissions");
+    }
+
+    private HttpResponse<String> get(Long id, String token, String type) throws Exception {
+        return client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/" + type + "/" + id))
             .header("X-Judge-Token", token).GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    private JsonNode result(JobResponse response) throws Exception {
+    private JsonNode result(JobResponse response) throws Exception { return result(response, "submissions"); }
+
+    private JsonNode result(JobResponse response, String type) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
         while (System.nanoTime() < deadline) {
-            HttpResponse<String> http = get(response.id(), response.accessToken());
+            HttpResponse<String> http = get(response.id(), response.accessToken(), type);
             assertThat(http.statusCode()).as(http.body()).isEqualTo(200);
             JsonNode result = mapper.readTree(http.body());
             String verdict = result.path("verdict").asText();
@@ -157,31 +174,4 @@ class JudgeEndToEndTests {
         throw new AssertionError("채점 대기 시간이 초과되었습니다.");
     }
 
-    private WebSocket connect(JobResponse job, BlockingQueue<JsonNode> events) {
-        WebSocket socket = client.newWebSocketBuilder().buildAsync(URI.create("ws://localhost:" + port + job.streamPath()),
-            new WebSocket.Listener() {
-                private final StringBuilder pending = new StringBuilder();
-                public void onOpen(WebSocket webSocket) { webSocket.request(Long.MAX_VALUE); }
-                public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-                    pending.append(data);
-                    if (last) { events.add(mapper.readTree(pending.toString())); pending.setLength(0); }
-                    return null;
-                }
-            }).join();
-        socket.sendText(mapper.writeValueAsString(Map.of("type", "auth", "token", job.accessToken())), true).join();
-        return socket;
-    }
-
-    private JsonNode waitFor(BlockingQueue<JsonNode> events, String type, StringBuilder output) throws Exception {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
-        while (System.nanoTime() < deadline) {
-            JsonNode event = events.poll(1, TimeUnit.SECONDS);
-            if (event == null) continue;
-            if (event.path("type").asText().equals("stdout")) {
-                output.append(new String(Base64.getDecoder().decode(event.path("data").asText()), StandardCharsets.UTF_8));
-            }
-            if (event.path("type").asText().equals(type)) return event;
-        }
-        throw new AssertionError("실행 이벤트를 받지 못했습니다: " + type);
-    }
 }

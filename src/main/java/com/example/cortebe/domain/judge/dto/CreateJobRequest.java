@@ -7,4 +7,9 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record CreateJobRequest(@NotNull @Positive Long problemId, @NotNull Language language,
-                               @NotBlank @Size(max = 102400) String code) { }
+                               @NotBlank @Size(max = 102400) String code,
+                               @Size(max = 1048576) String stdin) {
+    public CreateJobRequest(Long problemId, Language language, String code) {
+        this(problemId, language, code, null);
+    }
+}

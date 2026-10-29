@@ -46,11 +46,14 @@ public class JobStore {
 
     public record Case(String input, String expectedOutput) { }
     public record Snapshot(int timeLimitMs, int memoryLimitMb) { }
-    public record Work(Long id, Language language, String code, boolean submission, int totalCount, Snapshot snapshot) { }
+    public record Work(Long id, Language language, String code, boolean submission, int totalCount, Snapshot snapshot,
+                       String stdin) { }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public JobResponse create(Long userId, CreateJobRequest request, boolean submission) {
         if (request.code().getBytes(StandardCharsets.UTF_8).length > 102400) throw new InvalidInputException();
+        if (request.stdin() != null && request.stdin().getBytes(StandardCharsets.UTF_8).length > 1048576)
+            throw new InvalidInputException();
         User user = userId == null ? null : users.findById(userId).orElseThrow(UnauthorizedException::new);
         Problem problem = problems.findLockedById(request.problemId()).orElseThrow(JudgeNotFoundException::new);
         int memoryMb = problem.memoryLimitFor(request.language());
@@ -59,12 +62,13 @@ public class JobStore {
         if (submission && count == 0) throw new JudgeConflictException();
         String token = token();
         JudgeJob job = jobs.saveAndFlush(JudgeJob.builder().problem(problem).author(user).submission(submission)
-            .language(request.language()).code(request.code()).tokenHash(hash(token)).totalCount(count)
+            .language(request.language()).code(request.code()).stdin(submission ? null : request.stdin())
+            .tokenHash(hash(token)).totalCount(count)
             .snapshot(mapper.writeValueAsString(new Snapshot(problem.getTimeLimitMs(), memoryMb))).build());
         if (submission && snapshots.copy(job.getId(), problem.getId()) != count) throw new JudgeConflictException();
         return JobResponse.builder().id(job.getId()).verdict(job.getVerdict()).totalCount(job.getTotalCount())
             .accessToken(userId == null || !submission ? token : null)
-            .streamPath(submission ? null : "/api/executions/" + job.getId() + "/stream").build();
+            .build();
     }
 
     public JobResponse get(Long id, Long userId, String token, boolean submission) {
@@ -76,17 +80,12 @@ public class JobStore {
         return JobResponse.from(job);
     }
 
-    public void authorizeStream(Long id, String token) {
-        JudgeJob job = find(id);
-        if (job.isSubmission() || !tokenMatches(job, token)) throw new JudgeForbiddenException();
-    }
-
     @Transactional
     public Work claim(Long id) {
         if (jobs.transition(id, Verdict.QUEUED, Verdict.RUNNING, LocalDateTime.now()) != 1) return null;
         JudgeJob job = find(id);
         return new Work(id, job.getLanguage(), job.getCode(), job.isSubmission(), job.getTotalCount(),
-            mapper.readValue(job.getSnapshot(), Snapshot.class));
+            mapper.readValue(job.getSnapshot(), Snapshot.class), job.getStdin());
     }
 
     public List<Case> cases(Long id, int batch) {
@@ -98,6 +97,13 @@ public class JobStore {
     public void finish(Long id, Verdict verdict, int passed, long runtime, String message) {
         jobs.finish(id, Verdict.RUNNING, verdict, passed, runtime, message, LocalDateTime.now());
         snapshots.deleteAllByJobId(id);
+    }
+
+    @Transactional
+    public void finishExecution(Long id, Verdict verdict, long runtime, String message, String stdout, String stderr) {
+        if (jobs.finish(id, Verdict.RUNNING, verdict, 0, runtime, message, LocalDateTime.now()) == 1) {
+            jobs.saveOutput(id, stdout, stderr);
+        }
     }
 
     @Transactional

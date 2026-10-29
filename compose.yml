@@ -24,11 +24,69 @@ services:
       DB_PASSWORD: corte
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      JUDGE0_URL: http://judge0-server:2358
+      JUDGE_ENABLED: ${JUDGE_ENABLED:-true}
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
+      judge0-server:
+        condition: service_started
+
+  # Judge0 API에는 인증이 없으므로 ports를 열지 않고 compose 내부망에서만 쓴다
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    privileged: true
+    environment: &judge0-env
+      REDIS_HOST: judge0-redis
+      REDIS_PASSWORD: judge0
+      POSTGRES_HOST: judge0-db
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      COUNT: 2
+      ENABLE_NETWORK: "false"
+      ALLOW_ENABLE_NETWORK: "false"
+      MAX_CPU_TIME_LIMIT: 60
+      MAX_WALL_TIME_LIMIT: 65
+      MAX_MEMORY_LIMIT: 1048576
+    depends_on: &judge0-depends
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    privileged: true
+    environment: *judge0-env
+    depends_on: *judge0-depends
+
+  judge0-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+    volumes:
+      - judge0-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  judge0-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "judge0", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "judge0", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   db-data:
+  judge0-db-data:

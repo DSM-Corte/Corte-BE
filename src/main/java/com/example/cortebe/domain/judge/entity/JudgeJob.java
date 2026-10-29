@@ -67,6 +67,12 @@ public class JudgeJob {
     private int totalCount;
     @Lob
     private String message;
+    @Lob
+    private String stdin;
+    @Lob
+    private String stdout;
+    @Lob
+    private String stderr;
     @CreatedDate @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
     @LastModifiedDate @Column(nullable = false)
@@ -74,7 +80,7 @@ public class JudgeJob {
 
     @Builder
     public JudgeJob(Problem problem, User author, boolean submission, Language language, String code,
-                    String snapshot, String tokenHash, int totalCount) {
+                    String snapshot, String tokenHash, int totalCount, String stdin) {
         this.problem = problem;
         this.author = author;
         this.submission = submission;
@@ -83,6 +89,7 @@ public class JudgeJob {
         this.snapshot = snapshot;
         this.tokenHash = tokenHash;
         this.totalCount = totalCount;
+        this.stdin = stdin;
         this.verdict = Verdict.QUEUED;
         this.expiresAt = author == null || !submission ? LocalDateTime.now().plusHours(1) : null;
     }

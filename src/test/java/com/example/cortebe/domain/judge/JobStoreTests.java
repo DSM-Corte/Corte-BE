@@ -43,6 +43,66 @@ class JobStoreTests {
     @Autowired EntityManager entityManager;
 
     @Test
+    void 실행입력은_고정하고_출력은_완료시에만_한번_저장한다() {
+        // given
+        Long id = problem();
+        JobResponse created = store.create(null, new CreateJobRequest(id, Language.PYTHON, "code", "한글\n"), false);
+        // when
+        assertThat(store.claim(created.id()).stdin()).isEqualTo("한글\n");
+        store.finishExecution(created.id(), Verdict.FINISHED, 12, "", "한글\n", "err");
+        store.finishExecution(created.id(), Verdict.SYSTEM_ERROR, 0, "bad", "overwrite", "bad");
+        // then
+        JobResponse result = store.get(created.id(), null, created.accessToken(), false);
+        assertThat(result.verdict()).isEqualTo(Verdict.FINISHED);
+        assertThat(result.stdout()).isEqualTo("한글\n");
+        assertThat(result.stderr()).isEqualTo("err");
+        assertThat(jobs.findById(created.id()).orElseThrow().getStdin()).isNull();
+    }
+
+    @Test
+    void 실행환경_오류로_종료해도_원본_입력은_지운다() {
+        // given
+        Long id = problem();
+        JobResponse created = store.create(null, new CreateJobRequest(id, Language.PYTHON, "code", "private input"), false);
+        store.claim(created.id());
+        // when
+        store.finish(created.id(), Verdict.SYSTEM_ERROR, 0, 0, "통신 실패");
+        // then
+        entityManager.clear();
+        assertThat(jobs.findById(created.id()).orElseThrow().getStdin()).isNull();
+    }
+
+    @Test
+    void 접수거절_취소_재시작_복구도_실행입력을_정리한다() {
+        // given
+        Long id = problem();
+        var request = new CreateJobRequest(id, Language.PYTHON, "code", "private input");
+        var rejected = store.create(null, request, false);
+        var cancelled = store.create(null, request, false);
+        var interrupted = store.create(null, request, false);
+        store.claim(interrupted.id());
+        // when
+        store.reject(rejected.id());
+        store.cancelQueued(cancelled.id());
+        store.recover();
+        entityManager.clear();
+        // then
+        for (Long jobId : java.util.List.of(rejected.id(), cancelled.id(), interrupted.id())) {
+            assertThat(jobs.findById(jobId).orElseThrow().getStdin()).isNull();
+        }
+    }
+
+    @Test
+    void 실행입력이_UTF8_1MB를_넘으면_거절한다() {
+        // given
+        Long id = problem();
+        // when & then
+        assertThatThrownBy(() -> store.create(null,
+            new CreateJobRequest(id, Language.PYTHON, "code", "가".repeat(350000)), false))
+            .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
+    }
+
+    @Test
     void 제출_스냅샷에는_선택한_언어의_메모리_제한을_고정한다() {
         // given
         Long id = problems.saveAndFlush(Problem.builder().title("합").description("두 수").category("구현")
@@ -102,7 +162,7 @@ class JobStoreTests {
             java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusMinutes(1)), created.id());
         entityManager.clear();
         // when & then
-        assertThatThrownBy(() -> store.authorizeStream(created.id(), created.accessToken()))
+        assertThatThrownBy(() -> store.get(created.id(), null, created.accessToken(), false))
             .isInstanceOf(JudgeNotFoundException.class);
         store.cleanup();
         assertThat(jobs.existsById(created.id())).isFalse();
@@ -171,7 +231,9 @@ class JobStoreTests {
         Long id = problem();
         // when & then
         assertThatThrownBy(() -> store.create(null, request(id), true)).isInstanceOf(JudgeConflictException.class);
-        assertThat(store.create(null, request(id), false).streamPath()).isNotBlank();
+        JobResponse execution = store.create(null, request(id), false);
+        assertThat(execution.accessToken()).isNotBlank();
+        assertThat(execution.streamPath()).isNull();
     }
 
     @Test

@@ -2,11 +2,14 @@ package com.example.cortebe.domain.judge.service;
 
 import com.example.cortebe.domain.judge.dto.CreateJobRequest;
 import com.example.cortebe.domain.judge.dto.JobResponse;
-import com.example.cortebe.domain.judge.exception.JudgeConflictException;
 import com.example.cortebe.domain.judge.exception.JudgeLimitException;
-import com.example.cortebe.domain.judge.exception.JudgeNotFoundException;
 import com.example.cortebe.domain.judge.exception.JudgeUnavailableException;
-import com.example.cortebe.domain.judge.runner.DockerRunner;
+import com.example.cortebe.domain.judge.JudgeLanguage;
+import com.example.cortebe.domain.judge.JudgeStatus;
+import com.example.cortebe.domain.judge.dto.JudgeCase;
+import com.example.cortebe.domain.judge.dto.JudgeRequest;
+import com.example.cortebe.domain.judge.dto.JudgeResult;
+import com.example.cortebe.domain.judge.runner.Language;
 import com.example.cortebe.domain.judge.runner.JudgeProperties;
 import com.example.cortebe.domain.judge.runner.Verdict;
 import jakarta.annotation.PostConstruct;
@@ -15,63 +18,46 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 @Service
 @Slf4j
 public class JobManager {
-    private static final int WAITING = 0;
-    private static final int DISPATCHED = 1;
-    private static final int RUNNING = 2;
-    private static final int FINISHED = 3;
     private final JobStore store;
-    private final DockerRunner runner;
+    private final JudgeProvider provider;
     private final JudgeProperties properties;
     private final ThreadPoolExecutor executor;
-    private final ScheduledExecutorService deadlines;
     private final Semaphore capacity;
     private final AtomicBoolean accepting = new AtomicBoolean();
-    private final Map<Long, PendingJob> channels = new ConcurrentHashMap<>();
     private final Map<String, Rate> rates = new ConcurrentHashMap<>();
     private final Map<String, Integer> active = new HashMap<>();
 
-    public JobManager(JobStore store, DockerRunner runner, JudgeProperties properties) {
+    public JobManager(JobStore store, JudgeProvider provider, JudgeProperties properties) {
         this.store = store;
-        this.runner = runner;
+        this.provider = provider;
         this.properties = properties;
         executor = new ThreadPoolExecutor(properties.concurrency(), properties.concurrency(), 0, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(properties.queueCapacity()), Thread.ofPlatform().name("judge-", 0).factory());
-        deadlines = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().name("judge-connect-timeout").factory());
         capacity = new Semaphore(properties.concurrency() + properties.queueCapacity());
     }
 
-    public record Event(String type, String data) { }
     private record Rate(long minute, int count) { }
-    private record Outcome(Verdict verdict, int passed, long runtime, String message) { }
 
     public JobResponse create(Long userId, String ip, CreateJobRequest request, boolean submission) {
-        if (!properties.enabled() || !runner.available() || !accepting.get()) throw new JudgeUnavailableException();
+        if (!properties.enabled() || !accepting.get()) throw new JudgeUnavailableException();
         limit("ip:" + ip);
         if (userId != null) limit("user:" + userId);
-        if (channels.size() >= 1024 || !capacity.tryAcquire()) throw new JudgeLimitException();
+        if (!capacity.tryAcquire()) throw new JudgeLimitException();
         List<String> identities = userId == null ? List.of("ip:" + ip) : List.of("ip:" + ip, "user:" + userId);
         boolean acquired = false;
         PendingJob job = null;
@@ -79,10 +65,8 @@ public class JobManager {
             acquire(identities);
             acquired = true;
             JobResponse response = store.create(userId, request, submission);
-            job = new PendingJob(response.id(), identities, submission);
-            channels.put(job.id, job);
-            if (submission) executor.execute(job);
-            else job.timeout = deadlines.schedule(job::expire, properties.connectSeconds(), TimeUnit.SECONDS);
+            job = new PendingJob(response.id(), identities);
+            executor.execute(job);
             return response;
         } catch (RuntimeException exception) {
             if (job != null) job.reject();
@@ -95,27 +79,9 @@ public class JobManager {
         }
     }
 
-    public Channel connect(Long id, String token, Consumer<Event> consumer) {
-        store.authorizeStream(id, token);
-        PendingJob job = channels.get(id);
-        if (job == null) throw new JudgeNotFoundException();
-        if (!job.state.compareAndSet(WAITING, DISPATCHED)) throw new JudgeConflictException();
-        try {
-            job.channel.connect(consumer);
-            if (job.timeout != null) job.timeout.cancel(false);
-            executor.execute(job);
-            return job.channel;
-        } catch (RuntimeException exception) {
-            job.reject();
-            if (exception instanceof RejectedExecutionException) throw new JudgeLimitException();
-            throw exception;
-        }
-    }
-
     @PostConstruct
     public void recover() {
         // 웹 서버가 요청을 받기 전에 복구를 마치며 직접 생성한 객체도 복구 전에는 닫혀 있다.
-        runner.recoverContainers();
         store.recover();
         accepting.set(true);
     }
@@ -123,9 +89,6 @@ public class JobManager {
     @Scheduled(fixedDelay = 60000)
     public void cleanup() {
         store.cleanup();
-        long now = System.currentTimeMillis();
-        channels.entrySet().removeIf(entry -> entry.getValue().channel.finishedAt > 0
-            && now - entry.getValue().channel.finishedAt > 60000);
         long minute = Instant.now().getEpochSecond() / 60;
         rates.entrySet().removeIf(entry -> entry.getValue().minute() < minute - 1);
     }
@@ -133,11 +96,17 @@ public class JobManager {
     @PreDestroy
     public void close() {
         accepting.set(false);
-        channels.values().forEach(job -> job.channel.cancel());
-        deadlines.shutdownNow();
         executor.shutdown();
-        try { if (!executor.awaitTermination(30, TimeUnit.SECONDS)) executor.shutdownNow(); }
-        catch (InterruptedException exception) { Thread.currentThread().interrupt(); executor.shutdownNow(); }
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) cancelWaiting(executor.shutdownNow());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            cancelWaiting(executor.shutdownNow());
+        }
+    }
+
+    private void cancelWaiting(List<Runnable> waiting) {
+        waiting.forEach(task -> ((PendingJob) task).cancel());
     }
 
     private synchronized void limit(String key) {
@@ -160,174 +129,98 @@ public class JobManager {
         keys.forEach(key -> active.computeIfPresent(key, (ignored, count) -> count <= 1 ? null : count - 1));
     }
 
-    private Outcome execute(Long id, Channel channel) {
-        JobStore.Work work = store.claim(id);
-        if (work == null) return null;
-        long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
-        try (DockerRunner.PreparedProgram program = runner.prepare(work.language(), work.code(), channel.cancelled)) {
-            if (program.compilation().verdict() != Verdict.FINISHED) {
-                var result = program.compilation();
-                return new Outcome(result.verdict(), 0, result.runtimeMs(), compileMessage(result));
-            }
-            if (!work.submission()) {
-                var result = program.execute(work.snapshot().memoryLimitMb(), properties.sessionSeconds() * 1000L,
-                    null, channel::ready, channel::output, channel.cancelled);
-                return new Outcome(result.verdict(), 0, result.runtimeMs(), null);
-            }
-            int passed = 0;
-            long runtime = 0;
-            for (int batch = 0; batch * 8 < work.totalCount(); batch++) {
-                List<JobStore.Case> cases = store.cases(id, batch);
-                if (cases.isEmpty()) throw new IllegalStateException("채점 스냅샷이 없습니다.");
-                for (JobStore.Case testCase : cases) {
-                    if (System.nanoTime() >= deadline) return new Outcome(Verdict.TIME_LIMIT, passed, runtime, null);
-                    var result = program.execute(work.snapshot().memoryLimitMb(), work.snapshot().timeLimitMs(),
-                        testCase.input().getBytes(StandardCharsets.UTF_8), ignored -> { }, (type, bytes) -> { }, channel.cancelled);
-                    runtime += result.runtimeMs();
-                    if (result.verdict() != Verdict.FINISHED) return new Outcome(result.verdict(), passed, runtime, null);
-                    if (!OutputComparator.matches(testCase.expectedOutput(), result.stdout())) {
-                        return new Outcome(Verdict.WRONG_ANSWER, passed, runtime, null);
-                    }
-                    passed++;
-                }
-            }
-            return new Outcome(Verdict.ACCEPTED, passed, runtime, null);
-        }
+    private JudgeResult judge(JobStore.Work work, List<JudgeCase> cases) {
+        return provider.judge(JudgeRequest.builder().language(language(work.language())).code(work.code()).cases(cases)
+            .timeLimitMs(work.snapshot().timeLimitMs()).memoryLimitMb(work.snapshot().memoryLimitMb()).build());
     }
 
-    private String compileMessage(DockerRunner.Result result) {
-        return result.verdict() == Verdict.COMPILE_ERROR
-            ? new String(result.stdout(), StandardCharsets.UTF_8) + result.stderr() : null;
+    private void execute(Long id) {
+        JobStore.Work work = store.claim(id);
+        if (work == null) return;
+        if (!work.submission()) {
+            JudgeResult result = judge(work, List.of(new JudgeCase(work.stdin(), null)));
+            JudgeResult.CaseResult single = result.cases().getFirst();
+            Verdict verdict = result.status() == JudgeStatus.ACCEPTED ? Verdict.FINISHED : verdict(result.status());
+            store.finishExecution(id, verdict, result.timeMs() == null ? 0 : result.timeMs(),
+                single.compileOutput(), single.stdout(), single.stderr());
+            return;
+        }
+        int passed = 0;
+        long runtime = 0;
+        long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
+        for (int batch = 0; batch * 8 < work.totalCount(); batch++) {
+            if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) {
+                store.finish(id, Verdict.SYSTEM_ERROR, passed, runtime, "채점 대기 시간이 초과되었습니다.");
+                return;
+            }
+            List<JudgeCase> cases = store.cases(id, batch).stream()
+                .map(value -> new JudgeCase(value.input(), value.expectedOutput())).toList();
+            if (cases.isEmpty()) throw new IllegalStateException("채점 스냅샷이 없습니다.");
+            JudgeResult result = judge(work, cases);
+            for (JudgeResult.CaseResult single : result.cases()) {
+                runtime += single.timeMs() == null ? 0 : single.timeMs();
+                if (single.status() != JudgeStatus.ACCEPTED) {
+                    store.finish(id, verdict(single.status()), passed, runtime, single.compileOutput());
+                    return;
+                }
+                passed++;
+            }
+        }
+        store.finish(id, Verdict.ACCEPTED, passed, runtime, null);
+    }
+
+    private static JudgeLanguage language(Language language) {
+        return switch (language) {
+            case C -> JudgeLanguage.C99;
+            case CPP -> JudgeLanguage.CPP17;
+            case JAVA -> JudgeLanguage.JAVA;
+            case CSHARP -> JudgeLanguage.CSHARP;
+            case JAVASCRIPT -> JudgeLanguage.JAVASCRIPT;
+            case PYTHON -> JudgeLanguage.PYTHON;
+        };
+    }
+
+    private static Verdict verdict(JudgeStatus status) {
+        return switch (status) {
+            case ACCEPTED -> Verdict.ACCEPTED;
+            case WRONG_ANSWER -> Verdict.WRONG_ANSWER;
+            case TIME_LIMIT_EXCEEDED -> Verdict.TIME_LIMIT;
+            case RUNTIME_ERROR -> Verdict.RUNTIME_ERROR;
+            case COMPILE_ERROR -> Verdict.COMPILE_ERROR;
+            case OUTPUT_LIMIT -> Verdict.OUTPUT_LIMIT;
+            case INTERNAL_ERROR -> Verdict.SYSTEM_ERROR;
+        };
     }
 
     private final class PendingJob implements Runnable {
         final Long id;
         final List<String> identities;
-        final boolean submission;
-        final Channel channel = new Channel(this::cancelQueued);
-        final AtomicInteger state;
         final AtomicBoolean released = new AtomicBoolean();
-        volatile ScheduledFuture<?> timeout;
 
-        PendingJob(Long id, List<String> identities, boolean submission) {
-            this.id = id;
-            this.identities = identities;
-            this.submission = submission;
-            state = new AtomicInteger(submission ? DISPATCHED : WAITING);
-        }
+        PendingJob(Long id, List<String> identities) { this.id = id; this.identities = identities; }
 
         @Override
         public void run() {
-            if (!state.compareAndSet(DISPATCHED, RUNNING)) return;
-            try {
-                Outcome outcome = execute(id, channel);
-                // 컨테이너 정리가 끝난 뒤 자리를 먼저 반환하고 최종 상태를 공개한다.
-                finish();
-                if (outcome != null) {
-                    store.finish(id, outcome.verdict(), outcome.passed(), outcome.runtime(), outcome.message());
-                    if (!submission) {
-                        if (outcome.verdict() == Verdict.COMPILE_ERROR) channel.emit(new Event("compileError", outcome.message()));
-                        channel.emit(new Event("exit", outcome.verdict().name()));
-                    }
-                }
-            } catch (Exception exception) {
-                log.error("채점 작업 처리에 실패했습니다: {}", id, exception);
-                finish();
+            try { execute(id); }
+            catch (Exception exception) {
+                log.error("Judge0 실행·채점 작업 처리에 실패했습니다: {}", id, exception);
                 store.finish(id, Verdict.SYSTEM_ERROR, 0, 0, "실행 환경 오류가 발생했습니다.");
-                channel.emit(new Event("exit", Verdict.SYSTEM_ERROR.name()));
             } finally { finish(); }
         }
 
-        void expire() {
-            if (state.compareAndSet(WAITING, FINISHED)) {
-                channel.cancelled.set(true);
-                try { store.cancelQueued(id); } finally { finish(); }
-            }
-        }
-
-        void cancelQueued() {
-            if (state.compareAndSet(WAITING, FINISHED)
-                || (state.get() == DISPATCHED && executor.remove(this) && state.compareAndSet(DISPATCHED, FINISHED))) {
-                try { store.cancelQueued(id); } finally { finish(); }
-                channel.emit(new Event("exit", Verdict.CANCELLED.name()));
-            }
+        void cancel() {
+            try { store.cancelQueued(id); } finally { finish(); }
         }
 
         void reject() {
-            state.set(FINISHED);
             try { store.reject(id); } finally { finish(); }
         }
 
         void finish() {
-            state.set(FINISHED);
-            channel.finish();
-            if (timeout != null) timeout.cancel(false);
             if (released.compareAndSet(false, true)) {
                 release(identities);
                 capacity.release();
             }
         }
-    }
-
-    public static final class Channel {
-        private final AtomicBoolean cancelled = new AtomicBoolean();
-        private final ArrayBlockingQueue<byte[]> inputs = new ArrayBlockingQueue<>(64);
-        private final Runnable onCancel;
-        private Consumer<Event> consumer;
-        private volatile DockerRunner.Input input;
-        private boolean eof;
-        private int inputBytes;
-        private volatile long finishedAt;
-
-        private Channel(Runnable onCancel) { this.onCancel = onCancel; }
-
-        private synchronized void connect(Consumer<Event> next) {
-            if (consumer != null) throw new JudgeConflictException();
-            consumer = next;
-        }
-
-        private synchronized void emit(Event event) {
-            // 연결 전에 사용자 코드를 시작하지 않으므로 출력 이력을 보관할 필요가 없다.
-            if (consumer != null) consumer.accept(event);
-        }
-
-        private void output(String type, byte[] bytes) {
-            emit(new Event(type, Base64.getEncoder().encodeToString(bytes)));
-        }
-
-        private synchronized void ready(DockerRunner.Input value) {
-            input = value;
-            emit(new Event("ready", ""));
-            Thread.startVirtualThread(() -> {
-                try {
-                    while (!cancelled.get() && finishedAt == 0) {
-                        byte[] bytes = inputs.poll(100, TimeUnit.MILLISECONDS);
-                        if (bytes != null) value.write(bytes);
-                        synchronized (this) {
-                            if (eof && inputs.isEmpty()) { value.eof(); return; }
-                        }
-                    }
-                } catch (IOException exception) { cancel(); }
-                catch (InterruptedException exception) { Thread.currentThread().interrupt(); cancel(); }
-            });
-        }
-
-        public synchronized void write(String text) {
-            if (eof || finishedAt != 0) throw new JudgeConflictException();
-            byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-            inputBytes += bytes.length;
-            if (inputBytes > 1048576 || !inputs.offer(bytes)) { cancel(); throw new JudgeLimitException(); }
-        }
-
-        public synchronized void eof() { eof = true; }
-
-        public void cancel() {
-            cancelled.set(true);
-            DockerRunner.Input current = input;
-            if (current != null) current.cancel();
-            onCancel.run();
-        }
-
-        private void finish() { finishedAt = System.currentTimeMillis(); inputs.clear(); }
     }
 }
