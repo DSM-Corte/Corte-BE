@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -341,6 +342,28 @@ class Judge0JudgeProviderTests {
     }
 
     // 상태 ID를 차례로 돌려주고, 마지막 상태는 계속 유지한다
+    @ParameterizedTest
+    @ValueSource(strings = {"3\n", "한글 출력\n", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz\n"})
+    void Judge0의_줄바꿈이_포함된_Base64_출력과_진단을_복원한다(String output) {
+        // given
+        givenCase("0.001", 100L, 3);
+        var encoder = Base64.getMimeEncoder(60, new byte[]{'\n'});
+        String encoded = encoder.encodeToString(output.getBytes(StandardCharsets.UTF_8)) + "\n";
+        fetchResponseOverride = objectMapper.writeValueAsString(Map.of("submissions", List.of(Map.of(
+            "token", "t0", "status", Map.of("id", 3), "stdout", encoded,
+            "stderr", encoder.encodeToString("경고\n".getBytes(StandardCharsets.UTF_8)) + "\n",
+            "compile_output", encoder.encodeToString("컴파일 진단\n".getBytes(StandardCharsets.UTF_8)) + "\n"))));
+        JudgeRequest request = JudgeRequest.builder().language(JudgeLanguage.PYTHON).code("code")
+            .cases(List.of(new JudgeCase("", output))).timeLimitMs(1000).memoryLimitMb(128).build();
+        // when
+        JudgeResult result = judgeProvider.judge(request);
+        // then
+        assertThat(result.status()).isEqualTo(JudgeStatus.ACCEPTED);
+        assertThat(result.cases().getFirst().stdout()).isEqualTo(output);
+        assertThat(result.cases().getFirst().stderr()).isEqualTo("경고\n");
+        assertThat(result.cases().getFirst().compileOutput()).isEqualTo("컴파일 진단\n");
+    }
+
     @Test
     void 직접실행은_정답없이_입력을_보내고_표준출력과_오류를_반환한다() {
         // given

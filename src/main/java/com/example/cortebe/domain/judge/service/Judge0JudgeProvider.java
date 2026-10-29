@@ -149,7 +149,7 @@ public class Judge0JudgeProvider implements JudgeProvider {
             : new BigDecimal(submission.time()).movePointRight(3).setScale(0, RoundingMode.HALF_UP).intValue();
         String stdout = decode(submission.stdout());
         JudgeStatus status = Judge0Status.from(submission.status().id()).getJudgeStatus();
-        byte[] bytes = submission.stdout() == null ? new byte[0] : Base64.getDecoder().decode(submission.stdout());
+        byte[] bytes = decodeBytes(submission.stdout());
         if (status == JudgeStatus.ACCEPTED && expected != null && !OutputComparator.matches(expected, bytes)) {
             status = JudgeStatus.WRONG_ANSWER;
         }
@@ -185,7 +185,12 @@ public class Judge0JudgeProvider implements JudgeProvider {
     }
 
     private String decode(String value) {
-        return value == null ? "" : new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+        return new String(decodeBytes(value), StandardCharsets.UTF_8);
+    }
+
+    private byte[] decodeBytes(String value) {
+        // Judge0의 Ruby Base64.encode64가 삽입한 개행을 허용하되 출력 원본은 그대로 비교한다.
+        return value == null ? new byte[0] : Base64.getMimeDecoder().decode(value);
     }
 
     private String encode(String value) {

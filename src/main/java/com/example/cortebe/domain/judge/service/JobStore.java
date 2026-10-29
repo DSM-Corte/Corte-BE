@@ -127,7 +127,8 @@ public class JobStore {
 
     @Transactional
     public void recover() {
-        jobs.failInterrupted(Verdict.QUEUED, Verdict.RUNNING, Verdict.SYSTEM_ERROR, "서버 재시작으로 실행이 중단되었습니다.");
+        jobs.failInterrupted(Verdict.QUEUED, Verdict.RUNNING, Verdict.SYSTEM_ERROR, "서버 재시작으로 실행이 중단되었습니다.",
+            LocalDateTime.now());
         snapshots.deleteFinished(Verdict.QUEUED, Verdict.RUNNING);
     }
 

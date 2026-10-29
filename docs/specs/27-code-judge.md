@@ -42,6 +42,20 @@
 자체 DockerRunner/ExecutionClock/컨테이너 복구 전용 테스트는 구현 제거에 따라 삭제한다.
 WS 입력·취소 테스트는 승인된 HTTP 사전 입력·출력 조회 및 권한 테스트로 대체한다. 임의 테스트 건너뛰기나 단언 약화가 아니다.
 
+### 958bcd9 리뷰 수정
+
+- Ruby Base64.encode64 응답의 줄바꿈을 MIME 디코더로 처리한다. 문자열 표시와 정답 바이트 비교 모두 같은 복원 경로를 사용한다.
+- 재시작 복구 UPDATE에서 updatedAt도 현재 시각으로 갱신한다.
+- 큰 응답을 고려해 읽기 기본30초와 JUDGE0_READ_TIMEOUT_MS를 추가한다. 기존 REQUEST 환경값을 명시한 경우 호환한다.
+- 프록시 헤더 신뢰의 기본값은 none이며 배포 시 신뢰 프록시만 지정하도록 문서화한다.
+  회원 제출 보존·문제 삭제409·10000개 제한 키 상한은 기존 안전 정책을 유지한다.
+
+| 항목 | 테스트 | 레드 증거 |
+| --- | --- | --- |
+| 짧은·한글·60자 초과 줄바꿈 Base64의 stdout/stderr/compile_output | Judge0JudgeProviderTests#Judge0의_줄바꿈이_포함된_Base64_출력과_진단을_복원한다 | 3개 매개변수 모두 IllegalArgumentException 실패 확인 |
+| 복구 시 updatedAt 변경 | JobStoreTests#재시작_복구는_실패_처리_시각도_갱신한다 | 이전 날짜의 updatedAt이 그대로라 isAfter 단언 실패 확인 |
+| 읽기 제한의 새 설정·기존 설정·기본값 순서, 프록시 기본값 none | JudgeConfigTests 전체 | 설정 계약 확인. 연결 로직 변경이 아닌 YAML 설정 추가이므로 별도 기능 코드 되돌림은 해당 없음 |
+
 - 이슈: https://github.com/DSM-Corte/Corte-BE/issues/27
 - 기준 SHA: f2098c0df134f4a2d7d5a71965b36dc2160cc061
 - 작업 브랜치: feature/#27-code-judge

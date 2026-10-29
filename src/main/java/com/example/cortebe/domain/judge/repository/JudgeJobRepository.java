@@ -38,7 +38,7 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
     void deleteExecutions(Long problemId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update JudgeJob j set j.verdict = :failed, j.snapshot = '', j.stdin = null, j.message = :message "
+    @Query("update JudgeJob j set j.verdict = :failed, j.snapshot = '', j.stdin = null, j.message = :message, j.updatedAt = :now "
         + "where j.verdict = :queued or j.verdict = :running")
-    void failInterrupted(Verdict queued, Verdict running, Verdict failed, String message);
+    void failInterrupted(Verdict queued, Verdict running, Verdict failed, String message, LocalDateTime now);
 }

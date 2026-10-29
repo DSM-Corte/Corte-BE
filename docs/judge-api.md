@@ -117,8 +117,25 @@ Judge0는 케이스별 컴파일·실행을 담당한다. 케이스가 없으면
 
 설정: JUDGE_ENABLED, JUDGE_CONCURRENCY, JUDGE_QUEUE_CAPACITY, JUDGE_REQUESTS_PER_MINUTE,
 JUDGE_MAX_CONCURRENT_PER_IDENTITY, JUDGE0_URL, JUDGE0_POLL_INTERVAL(1s),
-JUDGE0_IDLE_TIMEOUT(2m), JUDGE0_REQUEST_TIMEOUT_MS(5000).
+JUDGE0_IDLE_TIMEOUT(2m), JUDGE0_REQUEST_TIMEOUT_MS(연결 기본5000), JUDGE0_READ_TIMEOUT_MS(읽기 기본30000).
+기존 JUDGE0_REQUEST_TIMEOUT_MS를 명시했다면 읽기 제한도 그 값을 사용하며, 새 READ 설정이 있으면 우선한다.
 삭제한 자체 실행기의 JUDGE_DOCKER·연결/기동/컴파일 제한 설정은 사용하지 않는다.
+
+## PR 리뷰에 따른 운영 설정
+
+- Judge0 응답의 Base64에는 Ruby 인코더가 60자 간격과 끝에 개행을 넣는다. MIME 디코더로 복원하며
+  디코딩한 stdout 원본 바이트를 비교한다. Base64 표현의 개행만 무시하고 프로그램 출력의 개행은 무시하지 않는다.
+  [Judge0의 인코더](https://github.com/judge0/judge0/blob/v1.13.1/app/services/base64_service.rb)
+- 직접 노출 구성에서는 전달 헤더를 신뢰하지 않도록 SERVER_FORWARD_HEADERS_STRATEGY=none을 유지한다.
+  리버스 프록시 배포 시에만 native로 설정하고 SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES에 신뢰할 프록시 IP 정규식을 지정한다.
+  프록시가 외부 전달 헤더를 덮어쓰고 백엔드 직접 접근을 차단해야 한다. 신뢰 범위를 빈 문자열(모든 프록시)로 설정하지 않는다.
+  그 뒤 getRemoteAddr()는 Tomcat이 검증한 클라이언트 주소를 사용한다.
+  [Spring Boot 프록시 설정](https://docs.spring.io/spring-boot/how-to/webserver.html#howto.webserver.use-behind-a-proxy-server)
+- IP·회원 분당 제한 키는 합계10000개 상한을 유지한다. 메모리 고갈 방지 목적이며 상한이 차면 새로운 키는429다.
+  현재·직전 분의 키를 보관하고 정리한다. 대규모·다중 인스턴스 운영의 분산 제한은 이번 범위 밖이다.
+- 회원 제출은 영구 보존하며 제출이 있는 문제 삭제는 기존 합의대로409다. 제출 보존·문제 삭제 정책은 임의로 바꾸지 않는다.
+- 큰 stdout 응답의 읽기 제한은 별도로 조정할 수 있다. 기본30초도 네트워크 상태에 따른 성공을 보장하지 않으며
+  이 경우 SYSTEM_ERROR로 종료된다. 운영 측정에 맞춰 JUDGE0_READ_TIMEOUT_MS를 설정한다.
 
 ## 검증
 

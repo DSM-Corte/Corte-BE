@@ -93,6 +93,22 @@ class JobStoreTests {
     }
 
     @Test
+    void 재시작_복구는_실패_처리_시각도_갱신한다() {
+        // given
+        var created = store.create(null, new CreateJobRequest(problem(), Language.PYTHON, "code"), false);
+        var oldTime = java.time.LocalDateTime.now().minusDays(1);
+        jdbc.update("update judge_jobs set updated_at = ? where id = ?", java.sql.Timestamp.valueOf(oldTime), created.id());
+        entityManager.clear();
+        // when
+        store.recover();
+        entityManager.clear();
+        // then
+        var recovered = jobs.findById(created.id()).orElseThrow();
+        assertThat(recovered.getVerdict()).isEqualTo(Verdict.SYSTEM_ERROR);
+        assertThat(recovered.getUpdatedAt()).isAfter(oldTime.plusHours(23));
+    }
+
+    @Test
     void 실행입력이_UTF8_1MB를_넘으면_거절한다() {
         // given
         Long id = problem();

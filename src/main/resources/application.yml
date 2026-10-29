@@ -19,7 +19,7 @@ spring:
         config:
           judge0:
             connect-timeout: ${JUDGE0_REQUEST_TIMEOUT_MS:5000}
-            read-timeout: ${JUDGE0_REQUEST_TIMEOUT_MS:5000}
+            read-timeout: ${JUDGE0_READ_TIMEOUT_MS:${JUDGE0_REQUEST_TIMEOUT_MS:30000}}
 
 springdoc:
   api-docs:
@@ -55,3 +55,6 @@ judge:
 
 admin:
   emails: ${ADMIN_EMAILS:}
+
+server:
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
