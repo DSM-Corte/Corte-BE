@@ -1,0 +1,6 @@
+package com.example.cortebe.domain.judge.runner;
+
+public enum Verdict {
+    QUEUED, RUNNING, ACCEPTED, WRONG_ANSWER, COMPILE_ERROR, RUNTIME_ERROR,
+    TIME_LIMIT, MEMORY_LIMIT, OUTPUT_LIMIT, SYSTEM_ERROR, CANCELLED, FINISHED
+}

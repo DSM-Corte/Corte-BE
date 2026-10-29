@@ -48,7 +48,8 @@ global/
 | 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제 |
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 이벤트를 발행하는 채점 코드는 없다 |
-| 제출, 채점, AI 리뷰, 점수/랭킹 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
+| 테스트케이스·제출·채점 | 관리자 케이스 CRUD, 비회원 포함 실행·채점. 기존 Judge0 Provider 연결, 입력 사전 전달·HTTP 결과 조회. 상세 `docs/judge-api.md` |
+| AI 리뷰, 점수/랭킹 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
 
 ### 아키텍처
 

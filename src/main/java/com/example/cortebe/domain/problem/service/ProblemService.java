@@ -1,5 +1,8 @@
 package com.example.cortebe.domain.problem.service;
 
+import com.example.cortebe.domain.judge.exception.JudgeConflictException;
+import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
+import com.example.cortebe.domain.judge.repository.TestCaseRepository;
 import com.example.cortebe.domain.problem.dto.CreateProblemRequest;
 import com.example.cortebe.domain.problem.dto.ProblemPageResponse;
 import com.example.cortebe.domain.problem.dto.ProblemResponse;
@@ -25,6 +28,8 @@ import java.util.Set;
 public class ProblemService {
 
     private final ProblemRepository problemRepository;
+    private final JudgeJobRepository judgeJobs;
+    private final TestCaseRepository testCases;
 
     @Transactional
     public ProblemResponse create(CreateProblemRequest request) {
@@ -34,6 +39,7 @@ public class ProblemService {
             .category(request.getCategory())
             .memoryLimitMb(request.getMemoryLimitMb())
             .timeLimitMs(request.getTimeLimitMs())
+            .languageMemoryLimitsMb(request.getLanguageMemoryLimitsMb())
             .tags(normalizeTags(request.getTags()))
             .build());
         return toResponse(problem);
@@ -87,12 +93,18 @@ public class ProblemService {
         Problem problem = findProblem(id);
         problem.update(request.getTitle(), request.getDescription(), request.getCategory(), request.getMemoryLimitMb(),
             request.getTimeLimitMs(), normalizeTags(request.getTags()));
+        problem.updateLanguageMemoryLimits(request.getLanguageMemoryLimitsMb());
         return toResponse(problem);
     }
 
     @Transactional
     public void delete(Long id) {
-        problemRepository.delete(findProblem(id));
+        Problem problem = problemRepository.findLockedById(id)
+            .orElseThrow(() -> new CorteException(GlobalErrorCode.RESOURCE_NOT_FOUND));
+        if (judgeJobs.existsByProblemIdAndSubmissionTrue(id)) throw new JudgeConflictException();
+        judgeJobs.deleteExecutions(id);
+        testCases.deleteAllByProblemId(id);
+        problemRepository.delete(problem);
     }
 
     private Problem findProblem(Long id) {
@@ -108,6 +120,7 @@ public class ProblemService {
             .category(problem.getCategory())
             .memoryLimitMb(problem.getMemoryLimitMb())
             .timeLimitMs(problem.getTimeLimitMs())
+            .languageMemoryLimitsMb(Map.copyOf(problem.getLanguageMemoryLimitsMb()))
             .tags(new LinkedHashSet<>(problem.getTags()))
             .build();
     }

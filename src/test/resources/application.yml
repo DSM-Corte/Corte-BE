@@ -12,6 +12,11 @@ spring:
     compatibility-verifier:
       enabled: false
 
+judge0:
+  url: http://localhost:2358
+  poll-interval: 1s
+  idle-timeout: 2m
+
 jwt:
   secret: dGVzdC1zZWNyZXQta2V5LWZvci1jb3J0ZS1iZS10ZXN0LW9ubHktMzJieXRlcw==
   access-expiration: 30m

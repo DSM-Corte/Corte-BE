@@ -1,5 +1,7 @@
 package com.example.cortebe.domain.problem.service;
 
+import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
+import com.example.cortebe.domain.judge.repository.TestCaseRepository;
 import com.example.cortebe.domain.problem.dto.CreateProblemRequest;
 import com.example.cortebe.domain.problem.dto.UpdateProblemRequest;
 import com.example.cortebe.domain.problem.entity.Problem;
@@ -30,6 +32,12 @@ class ProblemServiceTests {
 
     @Mock
     private ProblemRepository problemRepository;
+
+    @Mock
+    private JudgeJobRepository judgeJobs;
+
+    @Mock
+    private TestCaseRepository testCases;
 
     @InjectMocks
     private ProblemService problemService;
@@ -73,6 +81,7 @@ class ProblemServiceTests {
     @Test
     void 없는_문제를_조회_수정_삭제하면_찾을_수_없음_오류가_발생한다() {
         when(problemRepository.findById(99L)).thenReturn(Optional.empty());
+        when(problemRepository.findLockedById(99L)).thenReturn(Optional.empty());
 
         assertEquals(GlobalErrorCode.RESOURCE_NOT_FOUND,
             assertThrows(CorteException.class, () -> problemService.get(99L)).getErrorCode());
@@ -99,7 +108,7 @@ class ProblemServiceTests {
     void 존재하는_문제를_삭제한다() {
         Problem problem = Problem.builder().title("Title").description("Description")
             .category("구현").memoryLimitMb(256).timeLimitMs(1000).build();
-        when(problemRepository.findById(1L)).thenReturn(Optional.of(problem));
+        when(problemRepository.findLockedById(1L)).thenReturn(Optional.of(problem));
 
         problemService.delete(1L);
 
