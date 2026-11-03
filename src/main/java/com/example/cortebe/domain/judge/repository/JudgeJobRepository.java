@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
@@ -41,4 +42,22 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
     @Query("update JudgeJob j set j.verdict = :failed, j.snapshot = '', j.stdin = null, j.message = :message, j.updatedAt = :now "
         + "where j.verdict = :queued or j.verdict = :running")
     void failInterrupted(Verdict queued, Verdict running, Verdict failed, String message, LocalDateTime now);
+
+    // 잔디용: 내 제출 중 판정이 verdict(예: 정답)이고 from 이후에 낸 것의 "문제 ID, 제출 시각"만 가져온다
+    @Query("""
+        select j.problem.id as problemId, j.createdAt as createdAt
+        from JudgeJob j
+        where j.author.id = :userId
+          and j.submission = true
+          and j.verdict = :verdict
+          and j.createdAt >= :from
+        """)
+    List<SolvedSubmission> findSolvedSubmissions(Long userId, Verdict verdict, LocalDateTime from);
+
+    // 위 조회 결과 한 줄을 담는 그릇
+    interface SolvedSubmission {
+        Long getProblemId();
+
+        LocalDateTime getCreatedAt();
+    }
 }
