@@ -2,6 +2,7 @@ package com.example.cortebe.domain.judge.controller;
 
 import com.example.cortebe.domain.judge.dto.CreateJobRequest;
 import com.example.cortebe.domain.judge.dto.JobResponse;
+import com.example.cortebe.domain.judge.dto.SubmissionPageResponse;
 import com.example.cortebe.domain.judge.service.JobManager;
 import com.example.cortebe.domain.judge.service.JobStore;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -35,6 +37,14 @@ public class JobController {
     public JobResponse get(@PathVariable Long id, @AuthenticationPrincipal Long userId,
                           @RequestHeader(value = "X-Judge-Token", required = false) String token) {
         return store.get(id, userId, token, true);
+    }
+
+    @GetMapping("/api/submissions")
+    public SubmissionPageResponse list(@AuthenticationPrincipal Long userId,
+                                       @RequestParam(required = false) Long problemId,
+                                       @RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "20") int size) {
+        return store.list(userId, problemId, page, size);
     }
 
     @PostMapping("/api/executions")

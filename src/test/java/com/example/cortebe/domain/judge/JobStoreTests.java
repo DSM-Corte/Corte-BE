@@ -274,6 +274,36 @@ class JobStoreTests {
         assertThat(caseRepository.countByProblemId(id)).isZero();
     }
 
+    @Test
+    void 제출_단건_조회는_문제_언어_코드_제출시각을_함께_반환한다() {
+        // given
+        Long id = problem();
+        User user = users.saveAndFlush(User.builder().email("detail@corte.com").password("password").nickname("detail").build());
+        cases.create(id, new CreateTestCaseRequest("", "3\n", true, 0));
+        JobResponse created = store.create(user.getId(), request(id), true);
+
+        // when
+        JobResponse result = store.get(created.id(), user.getId(), null, true);
+
+        // then
+        assertThat(result.problemId()).isEqualTo(id);
+        assertThat(result.language()).isEqualTo(Language.PYTHON);
+        assertThat(result.code()).isEqualTo("print(3)");
+        assertThat(result.createdAt()).isNotNull();
+    }
+
+    @Test
+    void 제출_목록_페이지_크기가_범위를_벗어나면_거절한다() {
+        // when & then
+        assertThatThrownBy(() -> store.list(1L, null, 0, 101))
+            .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
+        assertThatThrownBy(() -> store.list(1L, null, -1, 20))
+            .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
+        assertThatThrownBy(() -> store.list(1L, null, 0, 0))
+            .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
+        assertThat(store.list(1L, null, 0, 100).size()).isEqualTo(100);
+    }
+
     private Long problem() {
         return problems.saveAndFlush(Problem.builder().title("합").description("두 수").category("구현")
             .timeLimitMs(1000).memoryLimitMb(256).build()).getId();
