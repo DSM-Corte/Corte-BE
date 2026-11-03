@@ -341,4 +341,22 @@ class ProblemControllerTests {
         return mockMvc.perform(request.header(HttpHeaders.AUTHORIZATION,
             "Bearer " + jwtProvider.createAccessToken(1L, Role.ADMIN)));
     }
+
+    @Test
+    void 기본_난이도는_미지정이고_관리자가_선택하거나_초기화한다() throws Exception {
+        // given
+        String location = performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST.replace("\"timeLimitMs\": 1000", "\"timeLimitMs\": 1000, \"tags\":[\"난이도테스트\"]")))
+            .andExpect(status().isCreated()).andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
+        // when & then
+        mockMvc.perform(get(location)).andExpect(jsonPath("$.difficulty").value("UNRATED"));
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"difficulty\":\"GOLD_1\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.difficulty").value("GOLD_1"));
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"difficulty\":null}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.difficulty").value("GOLD_1"));
+        mockMvc.perform(get("/api/problems?tag=난이도테스트")).andExpect(jsonPath("$.content[0].difficulty").value("GOLD_1"));
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"difficulty\":\"UNRATED\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.difficulty").value("UNRATED"));
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"difficulty\":\"GOLD_0\"}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("C001"));
+    }
 }

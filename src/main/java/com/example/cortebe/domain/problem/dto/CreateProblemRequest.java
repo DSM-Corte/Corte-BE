@@ -1,6 +1,7 @@
 package com.example.cortebe.domain.problem.dto;
 
 import com.example.cortebe.domain.judge.runner.Language;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -28,6 +29,8 @@ public class CreateProblemRequest {
     @NotBlank
     @Size(max = 50)
     private String category;
+
+    private Difficulty difficulty;
 
     @NotNull
     @Positive

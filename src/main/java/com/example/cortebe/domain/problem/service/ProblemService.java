@@ -37,6 +37,7 @@ public class ProblemService {
             .title(request.getTitle())
             .description(request.getDescription())
             .category(request.getCategory())
+            .difficulty(request.getDifficulty())
             .memoryLimitMb(request.getMemoryLimitMb())
             .timeLimitMs(request.getTimeLimitMs())
             .languageMemoryLimitsMb(request.getLanguageMemoryLimitsMb())
@@ -79,6 +80,7 @@ public class ProblemService {
                     .id(problem.getId())
                     .title(problem.getTitle())
                     .category(problem.getCategory())
+                    .difficulty(problem.getDifficulty())
                     .tags(tagsByProblem.getOrDefault(problem.getId(), Set.of()))
                     .build()).toList())
             .page(problems.getNumber())
@@ -94,6 +96,7 @@ public class ProblemService {
         problem.update(request.getTitle(), request.getDescription(), request.getCategory(), request.getMemoryLimitMb(),
             request.getTimeLimitMs(), normalizeTags(request.getTags()));
         problem.updateLanguageMemoryLimits(request.getLanguageMemoryLimitsMb());
+        problem.updateDifficulty(request.getDifficulty());
         return toResponse(problem);
     }
 
@@ -118,6 +121,7 @@ public class ProblemService {
             .title(problem.getTitle())
             .description(problem.getDescription())
             .category(problem.getCategory())
+            .difficulty(problem.getDifficulty())
             .memoryLimitMb(problem.getMemoryLimitMb())
             .timeLimitMs(problem.getTimeLimitMs())
             .languageMemoryLimitsMb(Map.copyOf(problem.getLanguageMemoryLimitsMb()))

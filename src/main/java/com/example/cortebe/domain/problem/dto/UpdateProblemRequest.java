@@ -1,6 +1,7 @@
 package com.example.cortebe.domain.problem.dto;
 
 import com.example.cortebe.domain.judge.runner.Language;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
@@ -29,6 +30,8 @@ public class UpdateProblemRequest {
     @Pattern(regexp = "(?s).*\\S.*")
     @Size(max = 50)
     private String category;
+
+    private Difficulty difficulty;
 
     @Positive
     private Integer memoryLimitMb;

@@ -1,5 +1,6 @@
 package com.example.cortebe.domain.problem.dto;
 
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import lombok.Builder;
 
 import java.util.List;
@@ -14,6 +15,6 @@ public record ProblemPageResponse(
     int totalPages
 ) {
     @Builder
-    public record Summary(Long id, String title, String category, Set<String> tags) {
+    public record Summary(Long id, String title, String category, Set<String> tags, Difficulty difficulty) {
     }
 }
