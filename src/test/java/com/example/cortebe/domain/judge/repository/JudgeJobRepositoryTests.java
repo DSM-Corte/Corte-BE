@@ -74,6 +74,7 @@ class JudgeJobRepositoryTests {
         // then
         assertThat(page.getContent()).extracting(JudgeJobRepository.Summary::getId).containsExactly(target.getId());
         assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(jobRepository.findSummaries(me.getId(), 999999L, latest()).getContent()).isEmpty();
     }
 
     private PageRequest latest() {

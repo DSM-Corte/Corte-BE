@@ -13,7 +13,8 @@
      "page":0,"size":20,"totalElements":1,"totalPages":1}
     ```
   - `GET /api/submissions/{id}`, `GET /api/executions/{id}`(기존) 응답에 `problemId`, `language`, `code`, `createdAt`을 추가한다.
-    기존 필드와 권한 규칙은 그대로다. 생성(`POST`) 응답은 바꾸지 않는다
+    기존 필드와 권한 규칙은 그대로다. 생성(`POST`) 응답은 값을 채우지 않아 새 키 4개가 `null`로 붙는다
+    (기존 `message`·`stdout`이 `null`로 나가는 것과 같은 방식. 독립 리뷰 지적에 따라 문구를 실제 동작에 맞췄다)
 - 데이터: 새 테이블·컬럼 없음. 기존 `judge_jobs`를 읽기만 한다. 스키마 영향 없음
 - 규칙
   - 목록에는 요청한 회원 본인의 제출(`submission = true`, `author_id = 본인`)만 나온다. 직접 실행과 비회원 제출은 나오지 않는다
@@ -37,3 +38,6 @@
 | 페이지 범위 → 400 C001 | SubmissionApiTests#페이지_크기가_100을_넘으면_400_C001을_반환한다 | Status expected:<400> but was:<405> |
 | 토큰 없음 → 401 A001 | SubmissionApiTests#토큰_없이_제출_목록을_조회하면_401_A001을_반환한다 | 레드 없음: 기존 보안 설정(anyRequest().authenticated())이 이미 막는다. 회귀 방지용 |
 | 단건 조회 HTTP 응답에 code·language | SubmissionApiTests#제출_단건_조회는_코드와_언어를_함께_반환한다 | No value at JSON path "$.problemId" |
+| 없는 problemId → 빈 목록 | JudgeJobRepositoryTests#문제_ID를_주면_그_문제의_제출만_가져온다 | 레드 없음: 리뷰 후 보강한 단언(구현 후 추가) |
+| size 하한 0 거절, 상한 100 허용 | JobStoreTests#제출_목록_페이지_크기가_범위를_벗어나면_거절한다 | 레드 없음: 리뷰 후 보강한 단언(구현 후 추가) |
+| 직접 실행 단건 조회에도 problemId·language·code | ExecutionApiTests#비회원_실행은_조회주소와_토큰을_반환하고_출력을_조회한다 | 레드 없음: 리뷰 후 보강한 단언(구현 후 추가) |

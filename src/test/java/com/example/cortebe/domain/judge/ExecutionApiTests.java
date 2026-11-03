@@ -69,6 +69,9 @@ class ExecutionApiTests {
         assertThat(result.path("verdict").asString()).isEqualTo("FINISHED");
         assertThat(result.path("stdout").asString()).isEqualTo("3\n");
         assertThat(result.path("stderr").asString()).isEqualTo("err");
+        assertThat(result.path("problemId").asLong()).isEqualTo(id);
+        assertThat(result.path("language").asString()).isEqualTo("PYTHON");
+        assertThat(result.path("code").asString()).isEqualTo("print(3)");
         assertThat(jobs.findById(created.path("id").asLong()).orElseThrow().getAuthor()).isNull();
         mvc.perform(get(location)).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("J002"));
         mvc.perform(get(location).header("X-Judge-Token", "wrong")).andExpect(status().isForbidden());

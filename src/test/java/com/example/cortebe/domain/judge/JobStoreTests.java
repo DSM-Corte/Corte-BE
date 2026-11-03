@@ -299,6 +299,9 @@ class JobStoreTests {
             .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
         assertThatThrownBy(() -> store.list(1L, null, -1, 20))
             .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
+        assertThatThrownBy(() -> store.list(1L, null, 0, 0))
+            .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
+        assertThat(store.list(1L, null, 0, 100).size()).isEqualTo(100);
     }
 
     private Long problem() {
