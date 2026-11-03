@@ -24,3 +24,7 @@
 | --- | --- | --- |
 | 셀 대상(내 제출·ACCEPTED만) | `JudgeJobRepositoryTests.내_정답_제출만_조회한다` | `findSolvedSubmissions` 없음 컴파일 실패 |
 | 기간 시작 시각 이전 제외 | `JudgeJobRepositoryTests.from_이전에_낸_제출은_조회하지_않는다` | `findSolvedSubmissions` 없음 컴파일 실패 |
+| count(같은 날 같은 문제 1번, 다른 날 다시 셈), 날짜 오름차순 | `GrassServiceTests.날짜별로_맞힌_서로_다른_문제_수를_센다` | `GrassService`·`GrassResponse` 없음 컴파일 실패 |
+| 날짜(한국 시간 자정 기준) | `GrassServiceTests.날짜는_한국_시간_자정을_기준으로_나눈다` | 위와 같음 |
+| 기간(오늘 포함 최근 365일) | `GrassServiceTests.오늘_포함_최근_365일의_첫날_0시부터_조회한다` | 위와 같음 |
+| 푼 날이 없으면 `[]` | `GrassServiceTests.푼_문제가_없으면_빈_목록을_준다` | 위와 같음 |
