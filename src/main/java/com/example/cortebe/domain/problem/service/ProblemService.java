@@ -9,6 +9,7 @@ import com.example.cortebe.domain.problem.dto.ProblemResponse;
 import com.example.cortebe.domain.problem.dto.UpdateProblemRequest;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
+import com.example.cortebe.domain.workbook.repository.WorkbookProblemRepository;
 import com.example.cortebe.global.error.exception.CorteException;
 import com.example.cortebe.global.error.exception.GlobalErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class ProblemService {
     private final ProblemRepository problemRepository;
     private final JudgeJobRepository judgeJobs;
     private final TestCaseRepository testCases;
+    private final WorkbookProblemRepository workbookProblems;
 
     @Transactional
     public ProblemResponse create(CreateProblemRequest request) {
@@ -107,6 +109,7 @@ public class ProblemService {
         if (judgeJobs.existsByProblemIdAndSubmissionTrue(id)) throw new JudgeConflictException();
         judgeJobs.deleteExecutions(id);
         testCases.deleteAllByProblemId(id);
+        workbookProblems.deleteAllByProblemId(id);
         problemRepository.delete(problem);
     }
 
