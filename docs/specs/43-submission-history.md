@@ -29,3 +29,11 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
+| 본인 제출만, 직접 실행·타인·비회원 제외, 최신순, 문제 제목 포함 | JudgeJobRepositoryTests#제출_목록은_본인의_제출만_문제_제목과_함께_최신순으로_가져온다 | 컴파일 실패: JudgeJobRepository.findSummaries·Summary 없음 |
+| problemId 필터 | JudgeJobRepositoryTests#문제_ID를_주면_그_문제의_제출만_가져온다 | 컴파일 실패: findSummaries 없음 |
+| 페이지 범위(page<0, size>100) → InvalidInputException | JobStoreTests#제출_목록_페이지_크기가_범위를_벗어나면_거절한다 | 컴파일 실패: JobStore.list 없음 |
+| 단건 조회에 problemId·language·code·createdAt | JobStoreTests#제출_단건_조회는_문제_언어_코드_제출시각을_함께_반환한다 | 컴파일 실패: JobResponse.problemId() 없음 |
+| GET /api/submissions 200, 페이지 응답 모양, 목록에 code 없음 | SubmissionApiTests#내_제출_목록을_최신순으로_반환한다 | Status expected:<200> but was:<405> |
+| 페이지 범위 → 400 C001 | SubmissionApiTests#페이지_크기가_100을_넘으면_400_C001을_반환한다 | Status expected:<400> but was:<405> |
+| 토큰 없음 → 401 A001 | SubmissionApiTests#토큰_없이_제출_목록을_조회하면_401_A001을_반환한다 | 레드 없음: 기존 보안 설정(anyRequest().authenticated())이 이미 막는다. 회귀 방지용 |
+| 단건 조회 HTTP 응답에 code·language | SubmissionApiTests#제출_단건_조회는_코드와_언어를_함께_반환한다 | No value at JSON path "$.problemId" |
