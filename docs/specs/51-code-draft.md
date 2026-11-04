@@ -65,6 +65,7 @@
 | 없는 문제 C004/404 | CodeDraftControllerTests#없는_문제는_저장과_조회에서_C004를_반환한다 | 사전 실행은 공통 미등록 경로 404로 통과, 기존 오류 계약 유지. 성공 경로 레드와 함께 검증 |
 | 언어·문제 ID 경계 400 C001 | CodeDraftControllerTests#잘못된_언어와_문제_ID는_400을_반환한다 | HTTP 사전 실행: 요청 검증 API가 없어 400 단언 실패 |
 | 검증·JSON 파싱 오류 응답/로그 원문 비노출 | CodeDraftControllerTests#검증과_JSON_오류는_코드_원문을_응답이나_로그에_남기지_않는다 | HTTP 사전 실행: 요청 검증 API가 없어 400 단언 실패 |
+| JSON 숫자·boolean·배열 입력 거부 | CodeDraftControllerTests#코드는_JSON_문자열만_허용한다 | 독립 리뷰 후 추가한 사전 테스트: 숫자 입력에서 expected 400 but was 201. 필드 전용 역직렬화로 수정 |
 | 문제 삭제 시 모든 회원·언어 기록 삭제 | CodeDraftControllerTests#원본_문제를_삭제하면_저장된_코드도_삭제한다 | HTTP 사전 실행: 최초 저장 단언 실패. 삭제 연동 단독 되돌림 검증은 별도 기록 |
 | 회원·문제·언어 DB 유니크 | CodeDraftRepositoryTests#같은_회원_문제_언어는_DB에서도_중복을_막는다 | 구현 전 컴파일 실패: CodeDraft·CodeDraftRepository 없음 |
 | 최대 길이 유니코드·감사 시각 | CodeDraftRepositoryTests#최대_길이의_유니코드와_시각을_DB에_저장한다 | 구현 전 컴파일 실패: CodeDraft·CodeDraftRepository 없음 |
@@ -80,3 +81,12 @@
 - 구현 후 `./gradlew.bat test --tests '*CodeDraft*Tests' --console=plain`: 종료 0, 새 테스트 17개 모두 통과.
 - 구현 후 `./gradlew.bat build --console=plain`: 종료 0, tests=187 skipped=7 failures=0 errors=0. 새 건너뛰기 없음.
 - 프론트 연동 문서: `docs/code-draft-api.md`. 프론트 구현·브라우저 자동 저장 동작은 범위 밖이므로 백엔드 검증과 구분한다.
+- 삭제 연동 되돌림: 커밋 e8bc22e에서 ProblemService의 코드 정리 한 줄만 제거하고 HTTP 테스트 실행, 종료 1 (13개 중 삭제 연동 1개 실패, FK 위반). 원본 파일을 바이트 단위로 복구했고 작업 트리가 다시 깨끗한 것을 확인했다.
+- 독립 리뷰: 커밋 e8bc22e를 새 맥락 리뷰어가 기준 SHA와 비교했다. 테스트 약화·범위 밖 변경은 없었다.
+
+| 리뷰 지적 | 처리 |
+| --- | --- |
+| String 필드에 대한 Jackson 숫자·boolean 자동 변환 가능성 및 타입 경계 테스트 누락 | 실제 실패 테스트로 숫자 입력의 201 응답을 확인. CodeDraftCodeDeserializer로 문자열 토큰만 허용하고 숫자·boolean·배열을 C001/400으로 거부. 공통 ObjectMapper 설정은 유지 |
+| 검증 결과의 SHA·실제 MySQL·CI 증거 보완 | 아래 최종 검증 기록과 최종 보고에 실행 명령·결과·커밋을 명시 |
+
+- 리뷰 수정 후 전체 빌드: 종료 0, tests=188 skipped=7 failures=0 errors=0. 새 테스트 18개 통과.

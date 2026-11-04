@@ -211,6 +211,16 @@ class CodeDraftControllerTests {
     }
 
     @Test
+    void 코드는_JSON_문자열만_허용한다() throws Exception {
+        // when & then
+        for (String json : new String[]{"{\"code\":123}", "{\"code\":true}", "{\"code\":[]}"}) {
+            rawSave(token, path(problemId, "JAVA"), json).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+        }
+        load(token, path(problemId, "JAVA")).andExpect(jsonPath("$.updatedAt").isEmpty());
+    }
+
+    @Test
     void 원본_문제를_삭제하면_저장된_코드도_삭제한다() throws Exception {
         // given
         save(token, path(problemId, "JAVA"), "코드").andExpect(status().isCreated());
