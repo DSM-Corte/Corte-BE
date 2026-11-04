@@ -1,5 +1,6 @@
 package com.example.cortebe.domain.problem.service;
 
+import com.example.cortebe.domain.codedraft.repository.CodeDraftRepository;
 import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
 import com.example.cortebe.domain.judge.repository.TestCaseRepository;
 import com.example.cortebe.domain.problem.dto.CreateProblemRequest;
@@ -38,6 +39,9 @@ class ProblemServiceTests {
 
     @Mock
     private TestCaseRepository testCases;
+
+    @Mock
+    private CodeDraftRepository codeDraftRepository;
 
     @InjectMocks
     private ProblemService problemService;

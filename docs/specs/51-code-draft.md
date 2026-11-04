@@ -53,7 +53,30 @@
 
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
+| 최초 저장 201·Location·공백/개행 보존·DB 복원 | CodeDraftControllerTests#처음_저장하면_201과_위치를_반환하고_DB에서_복원한다 | HTTP 사전 실행: API 부재로 최초 저장 201 단언 실패 |
+| 덮어쓰기 200·마지막 코드 복원 | CodeDraftControllerTests#기존_코드를_덮어쓰면_200과_마지막_코드를_반환한다 | HTTP 사전 실행: 최초 저장 단언 실패 |
+| 기록 없음 빈 코드·null 시각 | CodeDraftControllerTests#저장하지_않은_코드는_빈_문자열과_null_시각으로_반환한다 | HTTP 사전 실행: 조회 200 단언 실패 |
+| 다른 회원·ADMIN의 코드 격리 | CodeDraftControllerTests#다른_회원과_관리자는_본인_코드만_조회하고_수정한다 | HTTP 사전 실행: 최초 저장 단언 실패 |
+| 문제별·6개 언어별 분리 | CodeDraftControllerTests#회원의_문제별_언어별_코드는_서로_분리된다 | HTTP 사전 실행: 최초 저장 단언 실패 |
+| 빈 코드·공백 코드 저장 | CodeDraftControllerTests#빈_코드와_공백만_있는_코드를_그대로_저장한다 | HTTP 사전 실행: 최초 저장 단언 실패 |
+| 최대 102400자·초과·null·누락·실패 시 기존 코드 유지 | CodeDraftControllerTests#최대_길이는_저장하고_초과하거나_null이면_기존_코드를_유지한다 | HTTP 사전 실행: 최초 저장 단언 실패 |
+| 미인증 401 A001 | CodeDraftControllerTests#인증하지_않으면_저장과_조회에_401을_반환한다 | 기존 공통 보안 동작이라 사전 실행부터 통과, 권한 규칙 변경 없음 |
+| 유효 토큰의 회원 없음 401 | CodeDraftControllerTests#유효한_토큰이어도_회원이_없으면_401을_반환한다 | HTTP 사전 실행: 회원 확인이 없어 401 단언 실패 |
+| 없는 문제 C004/404 | CodeDraftControllerTests#없는_문제는_저장과_조회에서_C004를_반환한다 | 사전 실행은 공통 미등록 경로 404로 통과, 기존 오류 계약 유지. 성공 경로 레드와 함께 검증 |
+| 언어·문제 ID 경계 400 C001 | CodeDraftControllerTests#잘못된_언어와_문제_ID는_400을_반환한다 | HTTP 사전 실행: 요청 검증 API가 없어 400 단언 실패 |
+| 검증·JSON 파싱 오류 응답/로그 원문 비노출 | CodeDraftControllerTests#검증과_JSON_오류는_코드_원문을_응답이나_로그에_남기지_않는다 | HTTP 사전 실행: 요청 검증 API가 없어 400 단언 실패 |
+| 문제 삭제 시 모든 회원·언어 기록 삭제 | CodeDraftControllerTests#원본_문제를_삭제하면_저장된_코드도_삭제한다 | HTTP 사전 실행: 최초 저장 단언 실패. 삭제 연동 단독 되돌림 검증은 별도 기록 |
+| 회원·문제·언어 DB 유니크 | CodeDraftRepositoryTests#같은_회원_문제_언어는_DB에서도_중복을_막는다 | 구현 전 컴파일 실패: CodeDraft·CodeDraftRepository 없음 |
+| 최대 길이 유니코드·감사 시각 | CodeDraftRepositoryTests#최대_길이의_유니코드와_시각을_DB에_저장한다 | 구현 전 컴파일 실패: CodeDraft·CodeDraftRepository 없음 |
+| 동시 최초 저장 하나·다음 저장 덮어쓰기 | CodeDraftConcurrencyTests#동시에_처음_저장해도_기록은_하나이고_다음_저장이_덮어쓴다 | 구현 전 컴파일 실패: CodeDraftService·DTO 없음 |
+| 저장·문제 삭제 경쟁 | CodeDraftConcurrencyTests#저장과_문제_삭제가_겹쳐도_코드_기록이_남지_않는다 | 구현 전 컴파일 실패: CodeDraftService·예외 없음 |
 
 ## 검증 결과
 
 구현 후 명령·종료 코드·결과·SHA, 미실행 항목과 독립 리뷰 결과를 기록한다.
+
+- 사전 HTTP 테스트: 종료 1, tests=13 failures=11. 기존 인증·공통 404 계약 두 항목은 사전부터 통과했다.
+- 사전 DB·동시성 테스트: 종료 1, CodeDraft·Repository·Service·DTO·예외 부재로 컴파일 실패(8 errors).
+- 구현 후 `./gradlew.bat test --tests '*CodeDraft*Tests' --console=plain`: 종료 0, 새 테스트 17개 모두 통과.
+- 구현 후 `./gradlew.bat build --console=plain`: 종료 0, tests=187 skipped=7 failures=0 errors=0. 새 건너뛰기 없음.
+- 프론트 연동 문서: `docs/code-draft-api.md`. 프론트 구현·브라우저 자동 저장 동작은 범위 밖이므로 백엔드 검증과 구분한다.
