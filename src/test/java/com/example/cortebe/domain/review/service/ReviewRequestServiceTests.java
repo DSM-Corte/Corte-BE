@@ -10,7 +10,6 @@ import com.example.cortebe.domain.review.dto.ApplyResponse;
 import com.example.cortebe.domain.review.dto.CreateReviewRequestRequest;
 import com.example.cortebe.domain.review.dto.ReviewRequestPageResponse;
 import com.example.cortebe.domain.review.dto.ReviewRequestResponse;
-import com.example.cortebe.domain.review.entity.LineComment;
 import com.example.cortebe.domain.review.entity.ReviewRequest;
 import com.example.cortebe.domain.review.exception.DuplicateReviewRequestException;
 import com.example.cortebe.domain.review.exception.InvalidApplySelectionException;
