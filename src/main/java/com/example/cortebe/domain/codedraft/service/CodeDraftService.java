@@ -31,8 +31,8 @@ public class CodeDraftService {
     public SaveResult save(Long userId, Long problemId, Language language, SaveCodeDraftRequest request) {
         // 아직 저장 기록이 없는 최초 요청도 같은 회원 행을 잠가 중복 생성을 막는다.
         User user = userRepository.findLockedById(userId).orElseThrow(UnauthorizedException::new);
-        // 문제 삭제도 이 행을 잠그므로 삭제 직후 코드 기록이 다시 생기지 않는다.
-        Problem problem = problemRepository.findLockedById(problemId).orElseThrow(CodeDraftProblemNotFoundException::new);
+        // 문제 삭제의 쓰기 잠금과만 충돌시키고 다른 회원의 저장은 함께 진행한다.
+        Problem problem = problemRepository.findReadLockedById(problemId).orElseThrow(CodeDraftProblemNotFoundException::new);
         Optional<CodeDraft> existing = codeDraftRepository.findByUserIdAndProblemIdAndLanguage(userId, problemId, language);
         CodeDraft draft = existing.orElseGet(() -> CodeDraft.builder().user(user).problem(problem).language(language)
             .code(request.code()).build());
