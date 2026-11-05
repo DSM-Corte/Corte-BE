@@ -1,5 +1,6 @@
 package com.example.cortebe.domain.problem.service;
 
+import com.example.cortebe.domain.codedraft.repository.CodeDraftRepository;
 import com.example.cortebe.domain.judge.exception.JudgeConflictException;
 import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
 import com.example.cortebe.domain.judge.repository.TestCaseRepository;
@@ -30,6 +31,7 @@ public class ProblemService {
     private final ProblemRepository problemRepository;
     private final JudgeJobRepository judgeJobs;
     private final TestCaseRepository testCases;
+    private final CodeDraftRepository codeDraftRepository;
 
     @Transactional
     public ProblemResponse create(CreateProblemRequest request) {
@@ -104,6 +106,7 @@ public class ProblemService {
         if (judgeJobs.existsByProblemIdAndSubmissionTrue(id)) throw new JudgeConflictException();
         judgeJobs.deleteExecutions(id);
         testCases.deleteAllByProblemId(id);
+        codeDraftRepository.deleteAllByProblemId(id);
         problemRepository.delete(problem);
     }
 

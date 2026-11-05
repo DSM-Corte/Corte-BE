@@ -70,6 +70,8 @@
 
 ## 기존 코드에서 정해진 것
 
+- 작성 중인 풀이 코드의 전체 교체는 `PUT /api/code-drafts/{problemId}/{language}`로 처리한다. 최초 저장은 201 + Location, 갱신은 200이다. 빈 코드·공백·줄바꿈은 그대로 보존한다.
+
 - 인증: access token만 쓴다. subject는 userId 문자열, `role` 클레임은 `USER`/`ADMIN`. 리프레시 토큰은 없다.
   ADMIN은 `ADMIN_EMAILS`에 있는 이메일(공백 제거, 대소문자 무시)로 로그인한 회원이다.
 - 비동기 작업은 실패해도 재시도하지 않고 ERROR 로그만 남긴다(best-effort).
