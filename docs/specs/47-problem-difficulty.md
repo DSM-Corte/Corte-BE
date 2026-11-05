@@ -29,3 +29,14 @@
 - MySQL 실행 및 기존 데이터 컬럼 추가 검증, 되돌림 검사, 독립 리뷰는 미실행이다. 사용자의 기존 push·PR 요청과 이번 분리 요청에 따라 원격 이슈·브랜치·PR도 분리한다.
 - 테스트를 삭제하거나 건너뛰지 않고 난이도 테스트의 위치만 문제 도메인으로 옮긴다.
 - 분리 후 `./gradlew.bat build --console=plain`: 종료 0, tests=172 skipped=7 failures=0 errors=0. `git diff --check`: 종료 0. 커밋 후에도 빌드를 다시 확인한다.
+
+## PR #49 후속 리뷰 수정 (2026-11-05)
+
+- 기존 숫자 JSON `difficulty: 0`이 BRONZE_5로 저장되는 문제를 재현했다(expected 400, actual 201). 숫자·숫자 문자열·boolean·빈 문자열·배열·객체를 생성/PATCH 양쪽에서 거부한다.
+- 필드 전용 DifficultyDeserializer를 사용하며 다른 enum·공통 ObjectMapper는 바꾸지 않는다. 명시적 null·생략은 기존 기본값/유지 규칙을 따른다.
+- 추가 테스트: ProblemControllerTests#잘못된_JSON_타입의_난이도는_생성과_수정에서_거부한다, #생성시_선택과_null_기본값을_지원하고_일반_카테고리_목록에도_반영한다.
+- 레드: `./gradlew.bat test --tests '*ProblemControllerTests.*JSON*'`, 종료 1, 숫자 입력의 201 응답 확인.
+- 수정 후 전체 빌드: 종료 0, tests=174 skipped=7 failures=0 errors=0. 기존 테스트 삭제·건너뛰기·단언 약화 없음.
+- 실제 MySQL 8.4: 난이도 컬럼이 없는 기존 problems 테이블과 문제 행을 먼저 만든 뒤 앱을 시작했다. 기존 제목·설명은 유지됐고 난이도는 UNRATED로 채워졌다. 선택 생성·PATCH 생략 유지·카테고리 목록·null 기본값과 모든 잘못된 타입의 400을 실제 API로 확인했다.
+- MySQL 명령: `python -u <임시 폴더>/corte-review-smoke.py 49`, 종료 0. 기존 DB가 아닌 작업 전용 임시 컨테이너에서 검증했다.
+- 독립 사전 리뷰는 입력 타입과 기존 MySQL 데이터 검증 공백을 지적했으며 둘 다 재현·보완했다. 수정 diff는 커밋 후 독립 재검토한다. 최종 SHA·CI 결과는 PR 및 최종 보고에 기록한다.
