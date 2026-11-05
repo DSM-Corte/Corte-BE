@@ -359,4 +359,38 @@ class ProblemControllerTests {
         performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"difficulty\":\"GOLD_0\"}"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("C001"));
     }
+
+    @Test
+    void 잘못된_JSON_타입의_난이도는_생성과_수정에서_거부한다() throws Exception {
+        // given
+        String location = performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST))
+            .andExpect(status().isCreated()).andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
+        // when & then
+        for (String value : new String[]{"0", "\"0\"", "true", "\"\"", "[]", "{}"}) {
+            String request = CREATE_REQUEST.replace("\"timeLimitMs\": 1000", "\"timeLimitMs\": 1000, \"difficulty\":" + value);
+            performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("C001"));
+            performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"difficulty\":" + value + "}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("C001"));
+        }
+        mockMvc.perform(get(location)).andExpect(jsonPath("$.difficulty").value("UNRATED"));
+    }
+
+    @Test
+    void 생성시_선택과_null_기본값을_지원하고_일반_카테고리_목록에도_반영한다() throws Exception {
+        // given
+        String request = CREATE_REQUEST.replace("\"timeLimitMs\": 1000", "\"timeLimitMs\": 1000, \"difficulty\":\"SILVER_3\"");
+        String location = performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(request))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.difficulty").value("SILVER_3"))
+            .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
+        // when & then
+        performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.difficulty").value("SILVER_3"));
+        mockMvc.perform(get("/api/problems")).andExpect(jsonPath("$.content[0].difficulty").value("SILVER_3"));
+        mockMvc.perform(get("/api/problems").param("category", "구현"))
+            .andExpect(jsonPath("$.content[0].difficulty").value("SILVER_3"));
+        String nullRequest = CREATE_REQUEST.replace("\"timeLimitMs\": 1000", "\"timeLimitMs\": 1000, \"difficulty\":null");
+        performAsAdmin(post("/api/problems").contentType(MediaType.APPLICATION_JSON).content(nullRequest))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.difficulty").value("UNRATED"));
+    }
 }

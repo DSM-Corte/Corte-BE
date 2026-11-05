@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.Set;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class CreateProblemRequest {
     @Size(max = 50)
     private String category;
 
+    @JsonDeserialize(using = DifficultyDeserializer.class)
     private Difficulty difficulty;
 
     @NotNull
