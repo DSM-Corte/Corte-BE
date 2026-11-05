@@ -179,6 +179,30 @@ class WorkbookControllerTests {
             .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
     }
 
+    @Test
+    void JPA_오프셋_범위를_넘는_페이지는_400을_반환한다() throws Exception {
+        // given
+        String location = createWorkbook("페이지 경계");
+        // when & then
+        for (String query : new String[]{"?page=2147483647&size=20", "?page=21474837&size=100"}) {
+            mockMvc.perform(get("/api/workbooks" + query)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+            mockMvc.perform(get(location + query)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+        }
+    }
+
+    @Test
+    void JPA_최대_오프셋_범위_안의_빈_페이지는_정상_반환한다() throws Exception {
+        // given
+        String location = createWorkbook("페이지 경계");
+        // when & then
+        mockMvc.perform(get("/api/workbooks?page=2147483647&size=1")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty());
+        mockMvc.perform(get(location + "?page=2147483647&size=1")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.problems.content").isEmpty());
+    }
+
     private long createProblem(String title, String difficulty) throws Exception {
         var body = new java.util.HashMap<String, Object>();
         body.put("title", title);

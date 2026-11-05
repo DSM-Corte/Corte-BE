@@ -74,3 +74,14 @@
 - 분리 후 `./gradlew.bat build --console=plain`: 종료 0, tests=183 skipped=7 failures=0 errors=0. `git diff --cached --check`: 종료 0.
 - `git diff cf7b5f7 --quiet -- src/main`: 종료 0. 원본 통합 구현과 최종 운영 코드가 동일하다.
 - 난이도 선행 PR은 #49이며, develop 대상 CI가 통과했다.
+
+## PR #50 후속 리뷰 수정 (2026-11-05)
+
+- `page=2147483647&size=20`처럼 page 자체는 int 범위지만 곱한 오프셋이 JPA int 한도를 넘는 요청에서 500을 재현했다(expected 400, actual 500).
+- 목록·상세가 공유하는 페이지 검증에서 `(long) page * size > Integer.MAX_VALUE`를 거부해 C001/400으로 처리한다. int 곱셈 오버플로도 방지한다.
+- JPA 범위 안인 `page=2147483647&size=1`은 계속 200의 빈 페이지를 반환한다.
+- 테스트: WorkbookControllerTests#JPA_오프셋_범위를_넘는_페이지는_400을_반환한다, #JPA_최대_오프셋_범위_안의_빈_페이지는_정상_반환한다.
+- 레드: `./gradlew.bat test --tests '*WorkbookControllerTests.*JPA*'`, 종료 1, 2개 중 범위 초과 1개 실패. 수정 후 전체 빌드는 종료 0, tests=187 skipped=7 failures=0 errors=0.
+- 실제 MySQL 명령: `python -u <임시 폴더>/corte-review-smoke.py 50`, 종료 0. 목록·상세의 큰 페이지 400, 최대 지원 오프셋 200, 난이도 정렬·중복 409·원본 삭제 후 문제 수 감소를 확인했다.
+- #49의 난이도 검증 수정도 선행 브랜치에서 병합했다. 새 문제집 수정 diff에는 난이도 기능 변경이 중복되지 않는다.
+- 독립 사전 리뷰가 페이지 경계를 지적했으며 실행으로 재현·수정했다. 수정 커밋은 독립 재검토한다. 기존 테스트 삭제·건너뛰기·단언 약화 없음. CI는 여전히 선행 기능 브랜치를 base로 하므로 자동 실행 대상이 아니다.

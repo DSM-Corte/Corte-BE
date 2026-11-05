@@ -107,7 +107,9 @@ public class WorkbookService {
     }
 
     private PageRequest pageRequest(int page, int size) {
-        if (page < 0 || size < 1 || size > 100) throw new InvalidInputException();
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
+            throw new InvalidInputException();
+        }
         return PageRequest.of(page, size);
     }
 
