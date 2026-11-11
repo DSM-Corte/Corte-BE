@@ -83,7 +83,7 @@ global/
 - 커밋은 논리적 작업 단위로 나누고 `type: 한글 요약`(feat·fix·refactor·test·docs·chore)으로 쓴다.
   커밋·이슈·PR에 `Co-Authored-By`, "Generated with ..." 같은 AI 작성 표시를 넣지 않는다.
 - main·develop 브랜치에서 직접 작업하거나 push하지 않는다.
-- push는 4. Feature Workflow 5단계에서 그 작업 브랜치에만 한다. 그 밖에는 사용자가 요청할 때만 한다.
+- 작업 브랜치에 push하기 전에 4. Feature Workflow 5단계에 따라 로컬 변경분을 보여주고, 그 변경분에 대한 사용자의 명시적 허락을 받는다. 이 규칙은 첫 push, 기존 PR 업데이트, CI 수정 후 재push, Feature Workflow 밖의 push에 모두 적용한다. 구현 착수나 명세 승인은 push 허락으로 해석하지 않는다.
 - 버그를 고칠 때는 재현 테스트를 먼저 작성해 실패를 확인한 뒤 수정한다.
 - 확인한 사실, 추론, 실행하지 못한 검증을 구분해 보고한다.
 
@@ -97,7 +97,7 @@ global/
 
 ```
 이 하네스는 원하는 기능을 말로 설명하면 질문으로 빈 부분을 채운 뒤 끝까지 개발해 주는 도구이고,
-질문 → GitHub 이슈·브랜치 생성 → 구현·커밋 → push·PR → 쉬운 설명 순서로 진행할게요.
+질문 → GitHub 이슈·브랜치 생성 → 구현·커밋 → 로컬 변경 검토·푸시 허락 → push·PR → 쉬운 설명 순서로 진행할게요.
 
 기능을 당신의 말로 설명해주세요!
 원하시면 기술 스택도 질문하도록 할게요. 설명 끝에 "기술스택도 질문해줘"라고 이어붙여주세요!
@@ -162,6 +162,8 @@ Verification Checklist를 `docs/verification.md` 절차대로 확인하고, 결�
 
 ### 5단계: push와 PR
 
+push 전에 사용자에게 대상 브랜치와 커밋 SHA, 주요 변경 파일과 변경 내용, 로컬 검증 결과를 보여주고 “이 변경분을 푸시할까요?”라고 묻는다. 답을 기다리는 동안 변경분은 로컬에 둔다. 수정 요청을 받으면 로컬에서 반영·검증하고 갱신된 변경분을 다시 보여준다. 허락은 사용자가 확인한 브랜치와 커밋 SHA에만 적용하므로 push 직전에 둘을 확인하고 달라졌으면 다시 허락을 받는다.
+
 1. `git push -u origin <브랜치>` 후 `gh pr create --base develop --title "<type>: <한글 요약>" --body-file <파일> --label <이슈와 같은 라벨> --assignee @me --reviewer <리뷰어>`.
    `<리뷰어>`는 이름을 고정하지 않고 매번 조회한다: 저장소 협업자(`gh api repos/{owner}/{repo}/collaborators -q '.[].login'`) 중 현재 `gh` 사용자(`gh api user -q .login`)를 뺀 전원을 쉼표로 잇는다.
 2. 본문은 짧게 쓴다. `- `로 구분한 변경 내용 최대 5줄과 이슈 연결만 넣는다.
@@ -172,7 +174,7 @@ Verification Checklist를 `docs/verification.md` 절차대로 확인하고, 결�
    ### 관련 이슈
    resolved #<이슈번호>
    ```
-3. `gh pr checks <PR번호> --watch`로 CI를 확인한다. 실패하면 고쳐 같은 브랜치에 push하고 다시 확인한다.
+3. `gh pr checks <PR번호> --watch`로 CI를 확인한다. 실패하면 로컬에서 고치고 검증한 뒤 수정된 변경분을 보여준다. 다시 허락을 받으면 같은 브랜치에 push하고 CI를 확인한다.
 
 ### 6단계: 보고와 쉬운 설명
 

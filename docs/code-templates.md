@@ -18,7 +18,7 @@
 | DTO | `Create<E>Request`, `Update<E>Request`, `<E>Response`, `<E>PageResponse`(+중첩 `Summary`) | `NoteResponse` |
 | Repository 메서드 | 단건 연관 `findWith<연관>ById`, 목록 `findSummaries`, 일괄 삭제 `deleteAllBy<부모>Id` | `findWithAuthorById` |
 | 오류 코드 enum | `<E>_NOT_FOUND`, `<E>_FORBIDDEN`, `DUPLICATE_<E>` 순으로 번호를 붙인다 | `NOTE_NOT_FOUND` |
-| 예외 클래스 | `<E>NotFoundException`, `<E>ForbiddenException`, `Duplicate<E>Exception`. 모두 `CorteException`을 상속하고 `new CorteException(...)`을 직접 던지지 않는다 | `NoteNotFoundException` |
+| 예외 클래스 | `<E>NotFoundException`, `<E>ForbiddenException`, `Duplicate<E>Exception`. 같은 오류의 기존 예외를 재사용하거나 상속하고, `GlobalErrorCode`를 쓰는 기존 예외도 부모의 오류 코드를 유지한다. 새 도메인 전용 오류는 해당 도메인 enum에 정의하고 `CorteException`의 생성자에 넘긴다. 자세한 기준은 `src/main/AGENTS.md`의 예외 처리 절을 따른다 | `NoteNotFoundException` |
 | 오류 메시지 | "<대상>을(를) 찾을 수 없습니다." / "<대상> 작성자만 수정하거나 삭제할 수 있습니다." / "이미 <상태>인 <대상>입니다." | |
 | 테스트 메서드 | `<조건>이면_<결과>` 한글 문장 | `작성자가_아니면_수정에_실패한다` |
 | 이슈 제목 | `<대상> <기능> 구현` | `노트 CRUD 구현` |
