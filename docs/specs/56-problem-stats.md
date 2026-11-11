@@ -1,0 +1,16 @@
+# 마이페이지 풀이 통계 조회 API (#56)
+
+- 기준 SHA: ab85d7511c8039b2ae6cf576aae2aad6c3ed2ea5
+- 목적: 마이페이지에서 내 카테고리·난이도별 시도 및 정답 문제 수를 확인한다.
+- API: `GET /api/users/me/problem-stats`. Bearer 토큰 필수. 본문과 쿼리 파라미터 없음. 성공 시 200과 `[{category, difficulty, attemptedCount, solvedCount}]`. 미인증은 401 A001.
+- 전체 기간의 본인 정식 제출을 사용한다. ACCEPTED, WRONG_ANSWER, COMPILE_ERROR, RUNTIME_ERROR, TIME_LIMIT, MEMORY_LIMIT, OUTPUT_LIMIT를 시도로 집계한다. 테스트 실행, 대기, 채점 중, 취소, 시스템 오류는 제외한다.
+- 동일 문제는 시도와 정답에서 각각 한 번만 센다. ACCEPTED가 하나라도 있으면 정답으로 집계한다.
+- 문제의 현재 category와 difficulty로 분류한다. 난이도 미지정은 UNRATED다. 등록된 조합만 반환하며 시도 기록이 없으면 두 수치는 0이다. 등록된 문제가 없으면 빈 배열을 반환한다.
+- 카테고리명 오름차순, 같은 카테고리에서는 Difficulty 순서(UNRATED 마지막)로 정렬한다.
+- 읽기 전용 트랜잭션에서 한 번의 DB 집계로 조회한다. 데이터와 스키마 변경, 쓰기, 락은 없다. 등록된 조합을 한 화면에 보여주는 요약 응답이다.
+- 잔디는 기존 GET /api/users/me/grass를 사용한다. 색상 변경, 사용자 티어, 자동 약점 판정은 범위 밖이다.
+- 새 컨벤션 없음.
+
+## 테스트 대응
+
+구현 전 테스트 실행 결과를 구현 커밋에서 기록한다.
