@@ -107,6 +107,7 @@ class UserControllerTests {
             saveJob(noRecord, me, true, verdict);
         }
 
+        saveProblem("Graph", null);
         Problem recategorized = saveProblem("Graph", gold);
         saveJob(recategorized, me, true, Verdict.ACCEPTED);
         recategorized = problemRepository.findById(recategorized.getId()).orElseThrow();
@@ -117,7 +118,7 @@ class UserControllerTests {
         // when & then
         mockMvc.perform(get("/api/users/me/problem-stats").header(HttpHeaders.AUTHORIZATION, token))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(3))
+            .andExpect(jsonPath("$.length()").value(4))
             .andExpect(jsonPath("$[0].category").value("Graph"))
             .andExpect(jsonPath("$[0].difficulty").value("SILVER_3"))
             .andExpect(jsonPath("$[0].attemptedCount").value(7))
@@ -126,10 +127,14 @@ class UserControllerTests {
             .andExpect(jsonPath("$[1].difficulty").value("GOLD_5"))
             .andExpect(jsonPath("$[1].attemptedCount").value(0))
             .andExpect(jsonPath("$[1].solvedCount").value(0))
-            .andExpect(jsonPath("$[2].category").value("Implementation"))
+            .andExpect(jsonPath("$[2].category").value("Graph"))
             .andExpect(jsonPath("$[2].difficulty").value("UNRATED"))
-            .andExpect(jsonPath("$[2].attemptedCount").value(1))
-            .andExpect(jsonPath("$[2].solvedCount").value(1));
+            .andExpect(jsonPath("$[2].attemptedCount").value(0))
+            .andExpect(jsonPath("$[2].solvedCount").value(0))
+            .andExpect(jsonPath("$[3].category").value("Implementation"))
+            .andExpect(jsonPath("$[3].difficulty").value("UNRATED"))
+            .andExpect(jsonPath("$[3].attemptedCount").value(1))
+            .andExpect(jsonPath("$[3].solvedCount").value(1));
     }
 
     @Test
