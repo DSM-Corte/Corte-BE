@@ -80,6 +80,9 @@ stdout·stderr는 JSON 문자열이다. 컴파일 진단은 message에 제공한
 POST /api/submissions → 201 + Location: /api/submissions/{id}.
 problemId, language, code를 보낸다. 제출 요청의 stdin은 사용하지 않고 등록한 테스트케이스를 사용한다.
 GET /api/submissions/{id}에서 상태와 passedCount, totalCount, runtimeMs를 조회한다.
+단건 조회 응답(제출·직접 실행)에는 problemId, language, code, createdAt도 포함한다.
+GET /api/submissions?page=0&size=20&problemId=(선택)는 로그인한 회원 본인의 제출 기록을 최신순으로 반환한다.
+목록에는 코드가 없고 직접 실행·비회원 제출은 포함하지 않는다. 명세: docs/specs/43-submission-history.md
 비회원은 X-Judge-Token, 회원은 본인 JWT를 사용한다. 잘못된 토큰·소유자는 403이다.
 
 QUEUED → RUNNING → 최종 상태 순서다. 공개·비공개 케이스를 스냅샷으로 고정하고 8개씩 읽어

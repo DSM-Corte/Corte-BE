@@ -1,7 +1,10 @@
 package com.example.cortebe.domain.judge.repository;
 
 import com.example.cortebe.domain.judge.entity.JudgeJob;
+import com.example.cortebe.domain.judge.runner.Language;
 import com.example.cortebe.domain.judge.runner.Verdict;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,6 +19,15 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
     Optional<JudgeJob> findWithAuthorById(Long id);
 
     boolean existsByProblemIdAndSubmissionTrue(Long problemId);
+
+    // 코드 같은 큰 컬럼 없이 목록에 필요한 컬럼만 조회하고, 문제 제목은 join으로 한 번에 가져온다
+    @Query(value = "select j.id as id, p.id as problemId, p.title as problemTitle, j.language as language, "
+        + "j.verdict as verdict, j.passedCount as passedCount, j.totalCount as totalCount, j.runtimeMs as runtimeMs, "
+        + "j.createdAt as createdAt from JudgeJob j join j.problem p "
+        + "where j.author.id = :authorId and j.submission = true and (:problemId is null or p.id = :problemId)",
+        countQuery = "select count(j) from JudgeJob j "
+            + "where j.author.id = :authorId and j.submission = true and (:problemId is null or j.problem.id = :problemId)")
+    Page<Summary> findSummaries(Long authorId, Long problemId, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update JudgeJob j set j.verdict = :next, j.updatedAt = :now where j.id = :id and j.verdict = :previous")
@@ -42,6 +54,18 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
     @Query("update JudgeJob j set j.verdict = :failed, j.snapshot = '', j.stdin = null, j.message = :message, j.updatedAt = :now "
         + "where j.verdict = :queued or j.verdict = :running")
     void failInterrupted(Verdict queued, Verdict running, Verdict failed, String message, LocalDateTime now);
+
+    interface Summary {
+        Long getId();
+        Long getProblemId();
+        String getProblemTitle();
+        Language getLanguage();
+        Verdict getVerdict();
+        int getPassedCount();
+        int getTotalCount();
+        long getRuntimeMs();
+        LocalDateTime getCreatedAt();
+    }
 
     // 잔디용: 내 제출 중 판정이 verdict(예: 정답)이고 from 이후에 낸 것의 "문제 ID, 제출 시각"만 가져온다
     @Query("""

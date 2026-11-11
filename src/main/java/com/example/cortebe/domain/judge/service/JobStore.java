@@ -2,6 +2,7 @@ package com.example.cortebe.domain.judge.service;
 
 import com.example.cortebe.domain.judge.dto.CreateJobRequest;
 import com.example.cortebe.domain.judge.dto.JobResponse;
+import com.example.cortebe.domain.judge.dto.SubmissionPageResponse;
 import com.example.cortebe.domain.judge.entity.JudgeJob;
 import com.example.cortebe.domain.judge.exception.JudgeConflictException;
 import com.example.cortebe.domain.judge.exception.JudgeForbiddenException;
@@ -20,6 +21,7 @@ import com.example.cortebe.global.security.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import tools.jackson.databind.ObjectMapper;
@@ -78,6 +80,12 @@ public class JobStore {
             if (!job.isWrittenBy(userId)) throw new JudgeForbiddenException();
         } else if (!tokenMatches(job, token)) throw new JudgeForbiddenException();
         return JobResponse.from(job);
+    }
+
+    public SubmissionPageResponse list(Long userId, Long problemId, int page, int size) {
+        if (page < 0 || size < 1 || size > 100) throw new InvalidInputException();
+        return SubmissionPageResponse.from(jobs.findSummaries(userId, problemId,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"))));
     }
 
     @Transactional
