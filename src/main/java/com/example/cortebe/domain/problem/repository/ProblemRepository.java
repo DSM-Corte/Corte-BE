@@ -19,6 +19,10 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     @Query("select p from Problem p where p.id = :id")
     Optional<Problem> findLockedById(Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select p from Problem p where p.id = :id")
+    Optional<Problem> findReadLockedById(Long id);
+
     Page<Summary> findAllBy(Pageable pageable);
     Page<Summary> findAllByCategory(String category, Pageable pageable);
 
