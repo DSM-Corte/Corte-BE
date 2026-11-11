@@ -1,5 +1,6 @@
 package com.example.cortebe.domain.problem.repository;
 
+import com.example.cortebe.domain.judge.runner.Verdict;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.entity.Difficulty;
 import jakarta.persistence.LockModeType;
@@ -43,6 +44,24 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
         order by p.id, tag
         """)
     List<TagRow> findTagsByProblemIds(@Param("problemIds") Collection<Long> problemIds);
+
+    @Query("""
+        select p.category as category, p.difficulty as difficulty,
+            count(distinct case when j.id is not null then p.id end) as attemptedCount,
+            count(distinct case when j.verdict = :accepted then p.id end) as solvedCount
+        from Problem p
+        left join JudgeJob j on j.problem = p and j.author.id = :userId
+            and j.submission = true and j.verdict in :attemptVerdicts
+        group by p.category, p.difficulty
+        """)
+    List<ProblemStats> findProblemStats(Long userId, Collection<Verdict> attemptVerdicts, Verdict accepted);
+
+    interface ProblemStats {
+        String getCategory();
+        Difficulty getDifficulty();
+        long getAttemptedCount();
+        long getSolvedCount();
+    }
 
     interface Summary {
         Long getId();
