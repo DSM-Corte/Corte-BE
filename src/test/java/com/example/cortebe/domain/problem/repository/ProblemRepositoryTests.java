@@ -15,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.util.List;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -166,5 +167,15 @@ class ProblemRepositoryTests {
         assertEquals(5, page.content().size());
         page.content().forEach(problem -> assertEquals(Set.of("배열", "정렬"), problem.tags()));
         assertEquals(3, statistics.getPrepareStatementCount());
+    }
+
+    @Test
+    void DB에서_난이도를_생략해도_미지정으로_저장한다() {
+        // when
+        entityManager.createNativeQuery("insert into problems (title,description,category,memory_limit_mb,time_limit_ms) "
+            + "values ('기존형식','설명','구현',256,1000)").executeUpdate();
+        // then
+        assertThat(entityManager.createNativeQuery("select difficulty from problems where title='기존형식'", String.class)
+            .getSingleResult()).isEqualTo("UNRATED");
     }
 }
