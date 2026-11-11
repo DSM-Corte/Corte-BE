@@ -1,6 +1,7 @@
 package com.example.cortebe.domain.problem.repository;
 
 import com.example.cortebe.domain.problem.entity.Problem;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +27,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     Page<Summary> findAllByCategory(String category, Pageable pageable);
 
     @Query(value = """
-        select p.id as id, p.title as title, p.category as category
+        select p.id as id, p.title as title, p.category as category, p.difficulty as difficulty
         from Problem p
         where (:category is null or p.category = :category) and :tag member of p.tags
         """, countQuery = """
@@ -47,6 +48,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
         Long getId();
         String getTitle();
         String getCategory();
+        Difficulty getDifficulty();
     }
 
     interface TagRow {

@@ -7,6 +7,7 @@ import com.example.cortebe.domain.problem.dto.CreateProblemRequest;
 import com.example.cortebe.domain.problem.dto.UpdateProblemRequest;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
+import com.example.cortebe.domain.workbook.repository.WorkbookProblemRepository;
 import com.example.cortebe.global.error.exception.CorteException;
 import com.example.cortebe.global.error.exception.GlobalErrorCode;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,9 @@ class ProblemServiceTests {
 
     @Mock
     private CodeDraftRepository codeDraftRepository;
+
+    @Mock
+    private WorkbookProblemRepository workbookProblems;
 
     @InjectMocks
     private ProblemService problemService;

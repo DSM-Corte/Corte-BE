@@ -1,6 +1,7 @@
 package com.example.cortebe.domain.problem.dto;
 
 import com.example.cortebe.domain.judge.runner.Language;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import lombok.Builder;
 
 import java.util.Set;
@@ -15,6 +16,7 @@ public record ProblemResponse(
     Integer memoryLimitMb,
     Integer timeLimitMs,
     Set<String> tags,
-    Map<Language, Integer> languageMemoryLimitsMb
+    Map<Language, Integer> languageMemoryLimitsMb,
+    Difficulty difficulty
 ) {
 }
