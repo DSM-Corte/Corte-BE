@@ -83,5 +83,5 @@ for i in $(seq 1 90); do curl -s -o /dev/null localhost:8080/v3/api-docs && brea
 ## 6. CI
 
 - `.github/workflows/ci.yml`이 develop·main 대상 PR마다 JDK 21로 `./gradlew build`를 실행한다.
-- PR을 올린 뒤 `gh pr checks <PR번호> --watch`로 결과를 기다린다. 실패하면 원인을 고쳐 같은 브랜치에 push하고 다시 확인한다.
+- PR을 올린 뒤 `gh pr checks <PR번호> --watch`로 결과를 기다린다. 실패하면 로컬에서 원인을 고치고 검증한 뒤 `AGENTS.md`의 5단계에 따라 변경분을 보여준다. 사용자가 허락하면 같은 브랜치에 push하고 CI를 다시 확인한다.
 - 이번 변경과 무관한 원인(러너 장애 등)으로 실패하면 고치지 말고 보고한다. CI 결과는 6단계 보고에 포함한다.

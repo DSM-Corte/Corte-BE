@@ -48,7 +48,8 @@
 - 클라이언트에 보이는 오류는 도메인 오류 코드 enum + 전용 예외 클래스로 던진다. `new CorteException(...)`을 직접 던지지 않는다.
   공통 오류도 전용 클래스(`InvalidInputException`, `UnauthorizedException`, `InvalidTokenException`)를 쓰고, 없으면 같은 모양으로 만든다.
   - `domain.<기능>.exception.<기능>ErrorCode`: `ErrorProperty` 구현, `status`·`code`·`message`, `@Getter @AllArgsConstructor`.
-  - 예외: `<상황>Exception extends CorteException`, 인자 없는 생성자에서 `super(<기능>ErrorCode.X)`(`PostNotFoundException`).
+  - 새 예외를 만들기 전에 같은 오류를 나타내는 기존 예외를 찾아 재사용한다. 별도 타입이 필요하고 기존 도메인 예외와 같은 오류 응답을 유지해야 한다면 그 도메인 예외를 상속해 부모의 오류 코드를 그대로 사용한다. 예를 들어 코드 초안에서 문제를 찾을 수 없는 경우 `ProblemNotFoundException`을 재사용하고, 전용 타입이 필요하면 `ProblemNotFoundException`을 상속한다.
+  - 재사용할 부모 도메인 예외가 없는 새 오류는 `<상황>Exception extends CorteException`으로 만들고, 생성자에서 `super(<기능>ErrorCode.X)`를 호출한다. 도메인 전용 오류의 코드는 해당 도메인 enum에 정의한다. `GlobalErrorCode`는 공통 오류에 사용한다.
   - 코드는 접두사 + 세 자리 순번, 메시지는 "~습니다." 존댓말이다.
   - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판, `J` 실행·채점. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
 - `CorteException`(또는 cause가 `CorteException`인 예외)은 `GlobalExceptionFilter`가 `ErrorResponse` JSON으로 바꾼다.
