@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -95,9 +96,12 @@ class UserStatsServiceTests {
         // given
         given(judgeJobRepository.findStatRows(eq(1L), any())).willReturn(List.of(
             row(1L, Language.JAVA, Verdict.ACCEPTED),
+            row(4L, Language.JAVA, Verdict.ACCEPTED),          // JAVA: 푼 문제 2, 제출 2
             row(1L, Language.PYTHON, Verdict.WRONG_ANSWER),
-            row(2L, Language.PYTHON, Verdict.ACCEPTED),
-            row(3L, Language.CPP, Verdict.ACCEPTED)
+            row(1L, Language.PYTHON, Verdict.WRONG_ANSWER),
+            row(2L, Language.PYTHON, Verdict.ACCEPTED),        // PYTHON: 푼 문제 1, 제출 3
+            row(3L, Language.CPP, Verdict.ACCEPTED),           // CPP, C: 푼 문제 1, 제출 1 → 이름 순
+            row(3L, Language.C, Verdict.ACCEPTED)
         ));
         given(problemRepository.findTagsByProblemIds(anyCollection())).willReturn(List.of());
 
@@ -106,9 +110,10 @@ class UserStatsServiceTests {
 
         // then
         assertThat(stats.languages()).containsExactly(
-            new Group("PYTHON", 1, 2, 1, 50.0),
-            new Group("CPP", 1, 1, 1, 100.0),
-            new Group("JAVA", 1, 1, 1, 100.0));
+            new Group("JAVA", 2, 2, 2, 100.0),
+            new Group("PYTHON", 1, 3, 1, 33.3),
+            new Group("C", 1, 1, 1, 100.0),
+            new Group("CPP", 1, 1, 1, 100.0));
     }
 
     @Test
@@ -119,7 +124,8 @@ class UserStatsServiceTests {
             row(2L, "기초", Difficulty.UNRATED, Verdict.WRONG_ANSWER),
             row(3L, "심화", Difficulty.UNRATED, Verdict.ACCEPTED)   // 태그 없는 문제
         ));
-        given(problemRepository.findTagsByProblemIds(anyCollection())).willReturn(List.of(
+        // 못 푼 문제(2)까지 시도한 문제 ID 전체로 태그를 조회한다
+        given(problemRepository.findTagsByProblemIds(Set.of(1L, 2L, 3L))).willReturn(List.of(
             tag(1L, "구현"), tag(1L, "수학"), tag(2L, "수학")));
 
         // when

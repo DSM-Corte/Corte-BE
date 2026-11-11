@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -117,7 +118,7 @@ class UserControllerTests {
             .andExpect(jsonPath("$.difficulties.length()").value(31))
             .andExpect(jsonPath("$.tags").isEmpty())
             .andExpect(jsonPath("$.categories[0].name").value("구현"))
-            .andExpect(jsonPath("$.hardestProblem").doesNotExist());
+            .andExpect(jsonPath("$.hardestProblem").value(nullValue()));
     }
 
     @Test
