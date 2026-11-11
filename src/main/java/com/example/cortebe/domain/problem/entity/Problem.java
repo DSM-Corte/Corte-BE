@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyEnumerated;
 import jakarta.persistence.Entity;
@@ -20,6 +21,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.util.LinkedHashSet;
 import java.util.EnumMap;
@@ -46,6 +48,11 @@ public class Problem {
     @Column(nullable = false, length = 50)
     private String category;
 
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'UNRATED'")
+    @Column(nullable = false, length = 20)
+    private Difficulty difficulty = Difficulty.UNRATED;
+
     @Column(nullable = false)
     private Integer memoryLimitMb;
 
@@ -69,10 +76,12 @@ public class Problem {
 
     @Builder
     private Problem(String title, String description, String category, Integer memoryLimitMb,
-                    Integer timeLimitMs, Set<String> tags, Map<Language, Integer> languageMemoryLimitsMb) {
+                    Integer timeLimitMs, Set<String> tags, Map<Language, Integer> languageMemoryLimitsMb,
+                    Difficulty difficulty) {
         this.title = title;
         this.description = description;
         this.category = category;
+        if (difficulty != null) this.difficulty = difficulty;
         this.memoryLimitMb = memoryLimitMb;
         this.timeLimitMs = timeLimitMs;
         if (languageMemoryLimitsMb != null) this.languageMemoryLimitsMb.putAll(languageMemoryLimitsMb);
@@ -109,6 +118,10 @@ public class Problem {
             languageMemoryLimitsMb.clear();
             languageMemoryLimitsMb.putAll(limits);
         }
+    }
+
+    public void updateDifficulty(Difficulty difficulty) {
+        if (difficulty != null) this.difficulty = difficulty;
     }
 
     public int memoryLimitFor(Language language) {
