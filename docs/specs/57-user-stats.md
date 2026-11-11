@@ -43,3 +43,13 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
+| 집계 대상(내 제출·주어진 판정만, 직접 실행·남·비회원 제외), 문제 정보 포함 | `JudgeJobRepositoryTests#통계용_조회는_내_제출_중_주어진_판정만_문제_정보와_함께_가져온다` | 컴파일 실패: `findStatRows`·`StatRow` 없음 |
+| 채점 완료 7종만 조회, 푼 문제 중복 없이, 정답률 반올림, verdicts 7종 순서·0 포함 | `UserStatsServiceTests#채점이_끝난_7가지_판정만_조회하고_푼_문제는_중복_없이_센다` | 컴파일 실패: `UserStatsService`·`UserStatsResponse` 없음 |
+| 제출 0건: 정답률 0.0, verdicts·difficulties 0 채움, 목록 빈 값, hardestProblem null, 태그 조회 안 함 | `UserStatsServiceTests#제출이_없으면_0으로_채우고_태그를_조회하지_않는다` | 위와 같음 |
+| languages 집계·정렬(푼 문제 수 → 제출 수 → 이름) | `UserStatsServiceTests#언어별로_집계해_푼_문제_수_제출_수_이름_순으로_정렬한다` | 위와 같음 |
+| tags(문제의 모든 태그, 태그 없는 문제 제외)·categories 집계 | `UserStatsServiceTests#태그는_문제의_모든_태그에_세고_분류도_같은_방식으로_집계한다` | 위와 같음 |
+| difficulties 31개 enum 순서, hardestProblem(UNRATED 제외, 동률이면 작은 ID) | `UserStatsServiceTests#난이도별_푼_문제_수와_UNRATED를_뺀_가장_어려운_문제를_구한다` | 위와 같음 |
+| UNRATED만 풀었으면 hardestProblem null | `UserStatsServiceTests#UNRATED_문제만_풀었으면_가장_어려운_문제는_없다` | 위와 같음 |
+| API 200 응답 모양 | `UserControllerTests#내_통계를_조회한다` | `Status expected:<200> but was:<404>` (엔드포인트 없음) |
+| 토큰 없으면 401 A001 | `UserControllerTests#토큰_없이_통계를_조회하면_401을_준다` | 레드 없음: 보안 설정(`anyRequest().authenticated()`)이 이미 막아 구현 전부터 통과 |
+| 동시성 | 해당 없음: 읽기 전용 | 해당 없음 |
