@@ -47,10 +47,11 @@ public class LineComment {
     private int lineNumber;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     @Lob
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String suggestedCode;
 
     @CreatedDate

@@ -60,7 +60,7 @@ public class ReviewRequest {
 
     // 제출이 정리되거나 줄 번호가 어긋나지 않도록 요청 시점의 코드를 복사해 둔다
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String code;
 
     @Column(nullable = false)

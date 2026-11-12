@@ -44,7 +44,7 @@ public class ReviewComment {
     private User author;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     @CreatedDate
