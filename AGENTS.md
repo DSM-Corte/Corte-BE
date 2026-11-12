@@ -44,7 +44,7 @@ global/
 
 | 도메인 | 상태 |
 | --- | --- |
-| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname. `ADMIN_EMAILS`에 있는 이메일로 로그인하면 ADMIN 토큰(권한 컬럼 없음, 다음 로그인부터 적용) |
+| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname. `ADMIN_EMAILS`에 있는 이메일로 로그인하면 ADMIN 토큰(권한 컬럼 없음, 다음 로그인부터 적용). 목록에 있는 이메일은 가입할 수 없어 관리자는 가입 후 목록에 추가한다 |
 | 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제 |
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 이벤트를 발행하는 채점 코드는 없다 |
