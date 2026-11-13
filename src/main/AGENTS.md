@@ -51,7 +51,7 @@
   - 같은 오류를 나타내는 기존 예외를 먼저 재사용한다. 같은 응답을 내는 별도 타입이 필요하면 기존 예외를 상속해 부모의 오류 코드를 그대로 사용한다. 기존 예외가 `GlobalErrorCode`를 쓰는 경우에도 이 규칙을 적용한다. 예를 들어 `ProblemNotFoundException`을 재사용하거나 상속하면 `GlobalErrorCode.RESOURCE_NOT_FOUND`를 유지한다.
   - 새 오류 코드를 정의할 때 도메인 전용 오류는 해당 도메인 enum에 추가한다. enum이 없으면 새로 만든다. 해당 예외는 `CorteException`을 상속하고 생성자에서 `super(<기능>ErrorCode.X)`를 호출한다. `GlobalErrorCode`에는 여러 도메인에서 공유하는 공통 오류를 정의한다.
   - 코드는 접두사 + 세 자리 순번, 메시지는 "~습니다." 존댓말이다.
-  - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판, `J` 실행·채점. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
+  - 사용 중인 접두사: `C` 공통, `A` 인증, `U` 회원, `B` 게시판, `J` 실행·채점, `R` 사용자 리뷰. 새 도메인은 사용하지 않은 대문자로 만들고 여기에 추가한다.
 - `CorteException`(또는 cause가 `CorteException`인 예외)은 `GlobalExceptionFilter`가 `ErrorResponse` JSON으로 바꾼다.
   Spring MVC 표준 예외는 `GlobalExceptionHandler`가 `GlobalErrorCode`로 바꾼다.
 - 오류 응답 형태: `{timestamp, status, code, message}`. 검증 오류는 `errors[{field, value, reason}]`가 붙는다.
