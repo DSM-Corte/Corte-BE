@@ -31,6 +31,11 @@ public class AuthService {
 
     @Transactional
     public void signup(SignupRequest request) {
+        // 관리자 이메일은 로그인하면 ADMIN 권한을 받으므로 다른 사람이 먼저 가입하지 못하게 막는다
+        // 관리자는 일반 회원으로 가입한 뒤 ADMIN_EMAILS에 추가한다
+        if (adminProperties.isAdmin(request.email())) {
+            throw new DuplicateEmailException();
+        }
         if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException();
         }
