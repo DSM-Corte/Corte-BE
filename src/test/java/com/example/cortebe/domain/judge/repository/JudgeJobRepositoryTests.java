@@ -3,6 +3,7 @@ package com.example.cortebe.domain.judge.repository;
 import com.example.cortebe.domain.judge.entity.JudgeJob;
 import com.example.cortebe.domain.judge.runner.Language;
 import com.example.cortebe.domain.judge.runner.Verdict;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -135,6 +137,35 @@ class JudgeJobRepositoryTests {
 
         // then
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void 통계용_조회는_내_제출_중_주어진_판정만_문제_정보와_함께_가져온다() {
+        // given
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+        User other = userRepository.save(new User("other@corte.com", "password", "other"));
+        Problem problem = problemRepository.save(newProblem());
+
+        saveJob(problem, me, true, Verdict.ACCEPTED);      // 나와야 한다
+        saveJob(problem, me, true, Verdict.WRONG_ANSWER);  // 나와야 한다
+        saveJob(problem, me, true, Verdict.SYSTEM_ERROR);  // 주어진 판정이 아님
+        saveJob(problem, me, false, Verdict.ACCEPTED);     // 직접 실행
+        saveJob(problem, other, true, Verdict.ACCEPTED);   // 다른 사람 제출
+        saveJob(problem, null, true, Verdict.ACCEPTED);    // 비회원 제출
+
+        // when
+        List<JudgeJobRepository.StatRow> result = jobRepository.findStatRows(
+            me.getId(), EnumSet.of(Verdict.ACCEPTED, Verdict.WRONG_ANSWER));
+
+        // then
+        assertThat(result).extracting(JudgeJobRepository.StatRow::getVerdict)
+            .containsExactlyInAnyOrder(Verdict.ACCEPTED, Verdict.WRONG_ANSWER);
+        JudgeJobRepository.StatRow row = result.getFirst();
+        assertThat(row.getProblemId()).isEqualTo(problem.getId());
+        assertThat(row.getTitle()).isEqualTo("두 수의 합");
+        assertThat(row.getCategory()).isEqualTo("구현");
+        assertThat(row.getDifficulty()).isEqualTo(Difficulty.UNRATED);
+        assertThat(row.getLanguage()).isEqualTo(Language.PYTHON);
     }
 
     private Problem newProblem() {
