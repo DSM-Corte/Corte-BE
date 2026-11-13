@@ -26,6 +26,25 @@ public interface ReviewRequestRepository extends JpaRepository<ReviewRequest, Lo
             + "where (r.closed = false or r.requester.id = :userId) and (:problemId is null or r.problem.id = :problemId)")
     Page<Summary> findSummaries(Long userId, Long problemId, Pageable pageable);
 
+    @Query(value = """
+        select r.id as id, p.id as problemId, p.title as problemTitle,
+            r.closed as closed, r.createdAt as createdAt
+        from ReviewRequest r join r.problem p
+        where r.requester.id = :userId and (:closed is null or r.closed = :closed)
+        """, countQuery = """
+        select count(r) from ReviewRequest r
+        where r.requester.id = :userId and (:closed is null or r.closed = :closed)
+        """)
+    Page<OwnSummary> findOwnSummaries(Long userId, Boolean closed, Pageable pageable);
+
+    interface OwnSummary {
+        Long getId();
+        Long getProblemId();
+        String getProblemTitle();
+        boolean isClosed();
+        LocalDateTime getCreatedAt();
+    }
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update ReviewRequest r set r.closed = true, r.updatedAt = :now where r.id = :id and r.closed = false")
     int close(Long id, LocalDateTime now);

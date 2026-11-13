@@ -6,7 +6,9 @@ import com.example.cortebe.domain.judge.runner.Verdict;
 import com.example.cortebe.domain.review.dto.ApplyRequest;
 import com.example.cortebe.domain.review.dto.ApplyResponse;
 import com.example.cortebe.domain.review.dto.CreateReviewRequestRequest;
+import com.example.cortebe.domain.review.dto.MyReviewRequestPageResponse;
 import com.example.cortebe.domain.review.dto.ReviewRequestPageResponse;
+import com.example.cortebe.domain.review.dto.ReviewRequestStatusFilter;
 import com.example.cortebe.domain.review.dto.ReviewRequestResponse;
 import com.example.cortebe.domain.review.entity.LineComment;
 import com.example.cortebe.domain.review.entity.ReviewRequest;
@@ -80,6 +82,19 @@ public class ReviewRequestService {
 
     public ReviewRequestResponse get(Long userId, Long id) {
         return ReviewRequestResponse.from(finder.findReadable(id, userId));
+    }
+
+    public MyReviewRequestPageResponse listMine(Long userId, ReviewRequestStatusFilter status, int page, int size) {
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
+            throw new InvalidInputException();
+        }
+        Boolean closed = switch (status) {
+            case ALL -> null;
+            case OPEN -> false;
+            case CLOSED -> true;
+        };
+        return MyReviewRequestPageResponse.from(reviewRequestRepository.findOwnSummaries(userId, closed,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"))));
     }
 
     public ReviewRequestPageResponse list(Long userId, Long problemId, int page, int size) {
