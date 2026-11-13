@@ -15,6 +15,78 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ReviewRequestControllerTests extends ReviewControllerTestSupport {
 
     @Test
+    void 내_리뷰_요청만_상태별로_조회한다() throws Exception {
+        // given
+        long closedId = createReviewRequest();
+        json(post("/api/review-requests/" + closedId + "/close"), requesterToken, "")
+            .andExpect(status().isNoContent());
+        long openId = createReviewRequest();
+        String path = "/api/users/me/review-requests";
+
+        // when & then
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken).param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(openId))
+            .andExpect(jsonPath("$.content[0].problemId").value(problem.getId()))
+            .andExpect(jsonPath("$.content[0].problemTitle").value(problem.getTitle()))
+            .andExpect(jsonPath("$.content[0].status").value("OPEN"))
+            .andExpect(jsonPath("$.content[0].createdAt").exists())
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2));
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken)
+                .param("status", "").param("page", "").param("size", ""))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalElements").value(2));
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken)
+                .param("page", "1").param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(closedId));
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken)
+                .param("page", "2147483647").param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty());
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken).param("status", "OPEN").param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(openId));
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken).param("status", "CLOSED").param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(closedId))
+            .andExpect(jsonPath("$.content[0].status").value("CLOSED"));
+        mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, reviewerToken).param("status", "ALL"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty())
+            .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void 내_리뷰_목록의_잘못된_조건은_400을_반환한다() throws Exception {
+        // when & then
+        String path = "/api/users/me/review-requests";
+        for (String[] parameter : new String[][]{{"status", "UNKNOWN"}, {"size", "101"},
+            {"size", "0"}, {"page", "-1"}, {"page", "2147483647"}}) {
+            mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, requesterToken)
+                    .param(parameter[0], parameter[1]))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+        }
+    }
+
+    @Test
+    void 토큰_없이_내_리뷰_요청을_조회하면_401을_반환한다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/users/me/review-requests"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("A001"));
+    }
+
+
+    @Test
     void 정답_제출로_리뷰를_요청하면_201과_위치를_반환한다() throws Exception {
         // given
         JudgeJob submission = saveSubmission(requester, Verdict.ACCEPTED);
