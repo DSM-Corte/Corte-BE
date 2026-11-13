@@ -3,6 +3,7 @@ package com.example.cortebe.domain.judge.repository;
 import com.example.cortebe.domain.judge.entity.JudgeJob;
 import com.example.cortebe.domain.judge.runner.Language;
 import com.example.cortebe.domain.judge.runner.Verdict;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,5 +85,30 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
         Long getProblemId();
 
         LocalDateTime getCreatedAt();
+    }
+
+    // 통계용: 내 제출 중 판정이 verdicts에 있는 것을 한 줄씩, 문제 정보와 함께 짧은 컬럼만 가져온다
+    @Query("""
+        select p.id as problemId, p.title as title, p.category as category, p.difficulty as difficulty,
+               j.language as language, j.verdict as verdict
+        from JudgeJob j join j.problem p
+        where j.author.id = :userId
+          and j.submission = true
+          and j.verdict in :verdicts
+        """)
+    List<StatRow> findStatRows(Long userId, Collection<Verdict> verdicts);
+
+    interface StatRow {
+        Long getProblemId();
+
+        String getTitle();
+
+        String getCategory();
+
+        Difficulty getDifficulty();
+
+        Language getLanguage();
+
+        Verdict getVerdict();
     }
 }

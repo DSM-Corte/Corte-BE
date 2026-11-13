@@ -4,12 +4,14 @@ import com.example.cortebe.domain.review.dto.MyReviewRequestPageResponse;
 import com.example.cortebe.domain.review.dto.ReviewRequestStatusFilter;
 import com.example.cortebe.domain.review.service.ReviewRequestService;
 import com.example.cortebe.domain.user.dto.GrassResponse;
-import org.springframework.web.bind.annotation.RequestParam;
+import com.example.cortebe.domain.user.dto.UserStatsResponse;
 import com.example.cortebe.domain.user.service.GrassService;
+import com.example.cortebe.domain.user.service.UserStatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.List;
 public class UserController {
 
     private final GrassService grassService;
+    private final UserStatsService userStatsService;
     private final ReviewRequestService reviewRequestService;
 
     @GetMapping("/me/review-requests")
@@ -35,5 +38,10 @@ public class UserController {
     @GetMapping("/me/grass")
     public List<GrassResponse> getMyGrass(@AuthenticationPrincipal Long userId) {
         return grassService.getMyGrass(userId);
+    }
+
+    @GetMapping("/me/stats")
+    public UserStatsResponse getMyStats(@AuthenticationPrincipal Long userId) {
+        return userStatsService.getMyStats(userId);
     }
 }
