@@ -67,6 +67,34 @@ class AuthControllerTests {
     }
 
     @Test
+    void 관리자_이메일로는_가입할_수_없다() throws Exception {
+        // when & then
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email": "admin@corte.com", "password": "password1234", "nickname": "admin"}
+                    """))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("U001"));
+
+        assertThat(userRepository.findByEmail("admin@corte.com")).isEmpty();
+    }
+
+    @Test
+    void 대소문자가_다른_관리자_이메일로도_가입할_수_없다() throws Exception {
+        // when & then
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email": "Admin@Corte.com", "password": "password1234", "nickname": "admin"}
+                    """))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("U001"));
+
+        assertThat(userRepository.findByEmail("Admin@Corte.com")).isEmpty();
+    }
+
+    @Test
     void signupWithInvalidInput() throws Exception {
         // when & then
         mockMvc.perform(post("/auth/signup")

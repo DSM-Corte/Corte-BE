@@ -1,5 +1,6 @@
 package com.example.cortebe.domain.auth.service;
 
+import com.example.cortebe.domain.auth.AdminProperties;
 import com.example.cortebe.domain.auth.dto.SignupRequest;
 import com.example.cortebe.domain.user.exception.DuplicateEmailException;
 import com.example.cortebe.domain.user.repository.UserRepository;
@@ -30,6 +31,9 @@ class AuthServiceTests {
 
     @Mock
     private JwtProvider jwtProvider;
+
+    @Mock
+    private AdminProperties adminProperties;
 
     @InjectMocks
     private AuthService authService;
