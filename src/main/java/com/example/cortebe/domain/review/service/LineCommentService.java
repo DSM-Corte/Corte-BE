@@ -2,6 +2,7 @@ package com.example.cortebe.domain.review.service;
 
 import com.example.cortebe.domain.review.dto.CreateLineCommentRequest;
 import com.example.cortebe.domain.review.dto.LineCommentResponse;
+import com.example.cortebe.domain.review.dto.ReplyReactionResponse;
 import com.example.cortebe.domain.review.dto.ReplyResponse;
 import com.example.cortebe.domain.review.dto.UpdateLineCommentRequest;
 import com.example.cortebe.domain.review.entity.LineComment;
@@ -35,6 +36,7 @@ public class LineCommentService {
     private final ReviewReplyRepository reviewReplyRepository;
     private final UserRepository userRepository;
     private final ReviewRequestFinder finder;
+    private final ReplyReactionReader reactionReader;
 
     @Transactional
     public LineCommentResponse create(Long userId, Long requestId, CreateLineCommentRequest request) {
@@ -101,7 +103,9 @@ public class LineCommentService {
     private Map<Long, List<ReplyResponse>> repliesOf(List<LineComment> comments) {
         List<ReviewReply> replies = reviewReplyRepository
             .findByLineCommentIdInOrderByIdAsc(comments.stream().map(LineComment::getId).toList());
+        Map<Long, List<ReplyReactionResponse>> reactions = reactionReader.findByReplyIds(replies);
         return replies.stream().collect(Collectors.groupingBy(reply -> reply.getLineComment().getId(),
-            Collectors.mapping(ReplyResponse::from, Collectors.toList())));
+            Collectors.mapping(reply -> ReplyResponse.from(reply, reactions.getOrDefault(reply.getId(), List.of())),
+                Collectors.toList())));
     }
 }

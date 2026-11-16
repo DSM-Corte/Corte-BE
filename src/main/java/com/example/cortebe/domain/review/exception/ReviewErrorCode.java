@@ -21,7 +21,10 @@ public enum ReviewErrorCode implements ErrorProperty {
     INVALID_LINE_NUMBER(HttpStatus.BAD_REQUEST, "R011", "줄 번호가 코드 범위를 벗어났습니다."),
     INVALID_APPLY_SELECTION(HttpStatus.BAD_REQUEST, "R012", "적용할 코멘트는 하나만 선택해야 합니다."),
     SUGGESTION_MISSING(HttpStatus.CONFLICT, "R013", "제안 코드가 없는 코멘트입니다."),
-    LINE_COMMENT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "R014", "줄 코멘트는 요청당 200개까지 작성할 수 있습니다.");
+    LINE_COMMENT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "R014", "줄 코멘트는 요청당 200개까지 작성할 수 있습니다."),
+    REPLY_REACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "R015", "답글 반응을 찾을 수 없습니다."),
+    REPLY_REACTION_FORBIDDEN(HttpStatus.FORBIDDEN, "R016", "답글 반응을 변경할 권한이 없습니다."),
+    DUPLICATE_REPLY_REACTION(HttpStatus.CONFLICT, "R017", "이미 추가한 답글 반응입니다.");
 
     private final HttpStatus status;
     private final String code;

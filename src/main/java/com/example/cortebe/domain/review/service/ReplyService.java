@@ -1,6 +1,7 @@
 package com.example.cortebe.domain.review.service;
 
 import com.example.cortebe.domain.review.dto.CreateReplyRequest;
+import com.example.cortebe.domain.review.dto.ReplyReactionResponse;
 import com.example.cortebe.domain.review.dto.ReplyResponse;
 import com.example.cortebe.domain.review.dto.UpdateReplyRequest;
 import com.example.cortebe.domain.review.entity.LineComment;
@@ -19,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -29,6 +32,7 @@ public class ReplyService {
     private final ReviewCommentRepository reviewCommentRepository;
     private final UserRepository userRepository;
     private final ReviewRequestFinder finder;
+    private final ReplyReactionReader reactionReader;
 
     @Transactional
     public ReplyResponse createOnLineComment(Long userId, Long requestId, Long commentId, CreateReplyRequest request) {
@@ -66,7 +70,9 @@ public class ReplyService {
         reply.update(request.content());
         // 변경 감지의 flush 이후 @LastModifiedDate가 반영되도록 즉시 반영한다
         reviewReplyRepository.flush();
-        return ReplyResponse.from(reply);
+        List<ReplyReactionResponse> reactions = reactionReader.findByReplyIds(List.of(reply))
+            .getOrDefault(replyId, List.of());
+        return ReplyResponse.from(reply, reactions);
     }
 
     @Transactional

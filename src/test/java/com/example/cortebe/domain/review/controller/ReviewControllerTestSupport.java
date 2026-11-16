@@ -8,6 +8,7 @@ import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.global.security.Role;
 import com.example.cortebe.global.security.jwt.JwtProvider;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,17 +48,23 @@ abstract class ReviewControllerTestSupport {
     private JwtProvider jwtProvider;
 
     protected User requester;
+    protected User admin;
+    protected User reviewer;
     protected String requesterToken;
     protected String reviewerToken;
     protected String otherReviewerToken;
+    protected String adminToken;
     protected Problem problem;
 
     @BeforeEach
     void setUpReviewUsers() {
         requester = saveUser("requester");
         requesterToken = bearer(requester);
-        reviewerToken = bearer(saveUser("reviewer"));
+        reviewer = saveUser("reviewer");
+        reviewerToken = bearer(reviewer);
         otherReviewerToken = bearer(saveUser("other"));
+        admin = saveUser("admin");
+        adminToken = "Bearer " + jwtProvider.createAccessToken(admin.getId(), Role.ADMIN);
         problem = problemRepository.save(Problem.builder().title("문제").description("설명").category("구현")
             .memoryLimitMb(256).timeLimitMs(1000).build());
     }
@@ -71,8 +78,12 @@ abstract class ReviewControllerTestSupport {
 
     // 요청자가 정답 제출로 리뷰를 요청하고 그 ID를 돌려준다
     protected long createReviewRequest() throws Exception {
-        JudgeJob submission = saveSubmission(requester, Verdict.ACCEPTED);
-        return idOf(json(post("/api/review-requests"), requesterToken, "{\"submissionId\": " + submission.getId() + "}"));
+        return createReviewRequest(requester, requesterToken);
+    }
+
+    protected long createReviewRequest(User owner, String token) throws Exception {
+        JudgeJob submission = saveSubmission(owner, Verdict.ACCEPTED);
+        return idOf(json(post("/api/review-requests"), token, "{\"submissionId\": " + submission.getId() + "}"));
     }
 
     protected long createLineComment(long requestId, String body) throws Exception {

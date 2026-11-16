@@ -56,10 +56,13 @@ class ReplyServiceTests {
 
     private ReplyService service;
 
+    @Mock
+    private ReplyReactionReader reactionReader;
+
     @BeforeEach
     void setUp() {
         service = new ReplyService(reviewReplyRepository, lineCommentRepository, reviewCommentRepository,
-            userRepository, new ReviewRequestFinder(reviewRequestRepository));
+            userRepository, new ReviewRequestFinder(reviewRequestRepository), reactionReader);
     }
 
     @Test

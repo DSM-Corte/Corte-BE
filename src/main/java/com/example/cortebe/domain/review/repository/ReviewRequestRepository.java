@@ -2,10 +2,12 @@ package com.example.cortebe.domain.review.repository;
 
 import com.example.cortebe.domain.judge.runner.Language;
 import com.example.cortebe.domain.review.entity.ReviewRequest;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
@@ -16,6 +18,9 @@ public interface ReviewRequestRepository extends JpaRepository<ReviewRequest, Lo
 
     @EntityGraph(attributePaths = {"requester", "problem"})
     Optional<ReviewRequest> findWithRequesterById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<ReviewRequest> findForUpdateById(Long id);
 
     // 닫힌 요청은 요청자 본인에게만 보인다
     @Query(value = "select r.id as id, p.id as problemId, p.title as problemTitle, u.id as requesterId, "
