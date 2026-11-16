@@ -9,6 +9,7 @@ import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
 import com.example.cortebe.global.security.jwt.JwtProvider;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,6 +48,9 @@ class UserControllerTests {
 
     @Autowired
     private JwtProvider jwtProvider;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void 내_잔디를_조회한다() throws Exception {
@@ -167,6 +171,9 @@ class UserControllerTests {
             .andExpect(jsonPath("$.color").value("PINK"));
 
         // then
+        // 테스트 트랜잭션 안의 캐시가 아니라 DB에 저장된 값을 다시 읽는다
+        entityManager.flush();
+        entityManager.clear();
         mockMvc.perform(get("/api/users/me/theme").header(HttpHeaders.AUTHORIZATION, token))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.mode").value("DARK"))
