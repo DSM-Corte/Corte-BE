@@ -10,6 +10,7 @@ import com.example.cortebe.domain.user.dto.UserStatsResponse;
 import com.example.cortebe.domain.user.service.GrassService;
 import com.example.cortebe.domain.user.service.ThemeService;
 import com.example.cortebe.domain.user.service.UserStatsService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,7 +59,7 @@ public class UserController {
 
     @PatchMapping("/me/theme")
     public ThemeResponse updateMyTheme(@AuthenticationPrincipal Long userId,
-                                       @RequestBody UpdateThemeRequest request) {
+                                       @Valid @RequestBody UpdateThemeRequest request) {
         return themeService.updateMyTheme(userId, request);
     }
 }
