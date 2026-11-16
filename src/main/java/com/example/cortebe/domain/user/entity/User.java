@@ -48,4 +48,13 @@ public class User {
         this.password = password;
         this.nickname = nickname;
     }
+
+    public void updateTheme(ThemeMode themeMode, ThemeColor themeColor) {
+        if (themeMode != null) {
+            this.themeMode = themeMode;
+        }
+        if (themeColor != null) {
+            this.themeColor = themeColor;
+        }
+    }
 }

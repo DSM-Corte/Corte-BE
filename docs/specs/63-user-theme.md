@@ -26,3 +26,11 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
+| 고른 적 없으면 LIGHT·BLUE | `ThemeServiceTests.테마를_고른_적이_없으면_LIGHT와_BLUE를_준다`, `UserControllerTests.테마를_고른_적이_없으면_LIGHT와_BLUE를_준다` | 서비스: `ThemeService`·`ThemeResponse` 없음 컴파일 실패 / HTTP: 엔드포인트 없음 404 |
+| 고른 테마 조회 | `ThemeServiceTests.고른_테마가_있으면_그_테마를_준다` | 서비스 컴파일 실패(위와 같음) |
+| PATCH 200, 바뀐 값 유지 | `UserControllerTests.테마를_바꾸면_다음_조회에도_유지된다` | 엔드포인트 없음 404 |
+| null은 변경 없음(모드만·강조색만) | `ThemeServiceTests.모드만_보내면_강조색은_그대로다`, `ThemeServiceTests.강조색만_보내면_모드는_그대로다` | 서비스 컴파일 실패 |
+| 둘 다 없음 400 `C001` | `ThemeServiceTests.모드와_강조색이_둘_다_없으면_입력_오류`, `UserControllerTests.바꿀_값이_없으면_400을_준다` | 서비스 컴파일 실패 / HTTP: 400 기대에 404 |
+| 목록에 없는 값 400 `C001` | `UserControllerTests.목록에_없는_강조색이면_400을_준다` | 400 기대에 404 |
+| 회원 없음 401 `A001` | `ThemeServiceTests.조회할_때_회원이_없으면_인증_실패`, `ThemeServiceTests.변경할_때_회원이_없으면_인증_실패` | 서비스 컴파일 실패 |
+| 토큰 없음 401 `A001` | `UserControllerTests.토큰_없이_테마를_조회하면_401을_준다` | 보안 설정이 이미 막아서 구현 전부터 통과(레드 없음) |

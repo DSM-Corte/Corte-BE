@@ -4,12 +4,17 @@ import com.example.cortebe.domain.review.dto.MyReviewRequestPageResponse;
 import com.example.cortebe.domain.review.dto.ReviewRequestStatusFilter;
 import com.example.cortebe.domain.review.service.ReviewRequestService;
 import com.example.cortebe.domain.user.dto.GrassResponse;
+import com.example.cortebe.domain.user.dto.ThemeResponse;
+import com.example.cortebe.domain.user.dto.UpdateThemeRequest;
 import com.example.cortebe.domain.user.dto.UserStatsResponse;
 import com.example.cortebe.domain.user.service.GrassService;
+import com.example.cortebe.domain.user.service.ThemeService;
 import com.example.cortebe.domain.user.service.UserStatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +29,7 @@ public class UserController {
     private final GrassService grassService;
     private final UserStatsService userStatsService;
     private final ReviewRequestService reviewRequestService;
+    private final ThemeService themeService;
 
     @GetMapping("/me/review-requests")
     public MyReviewRequestPageResponse getMyReviewRequests(
@@ -43,5 +49,16 @@ public class UserController {
     @GetMapping("/me/stats")
     public UserStatsResponse getMyStats(@AuthenticationPrincipal Long userId) {
         return userStatsService.getMyStats(userId);
+    }
+
+    @GetMapping("/me/theme")
+    public ThemeResponse getMyTheme(@AuthenticationPrincipal Long userId) {
+        return themeService.getMyTheme(userId);
+    }
+
+    @PatchMapping("/me/theme")
+    public ThemeResponse updateMyTheme(@AuthenticationPrincipal Long userId,
+                                       @RequestBody UpdateThemeRequest request) {
+        return themeService.updateMyTheme(userId, request);
     }
 }
