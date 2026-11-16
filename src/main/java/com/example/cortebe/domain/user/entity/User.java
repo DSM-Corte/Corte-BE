@@ -2,6 +2,8 @@ package com.example.cortebe.domain.user.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,6 +32,15 @@ public class User {
 
     @Column(nullable = false, length = 20)
     private String nickname;
+
+    // 기존 회원 행이 있어 빈 값을 허용한다. 비어 있으면 응답에서 기본값을 쓴다
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ThemeMode themeMode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ThemeColor themeColor;
 
     @Builder
     public User(String email, String password, String nickname) {
