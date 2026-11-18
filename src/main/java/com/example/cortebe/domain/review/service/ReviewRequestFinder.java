@@ -19,6 +19,16 @@ public class ReviewRequestFinder {
     public ReviewRequest findReadable(Long id, Long userId) {
         ReviewRequest request = reviewRequestRepository.findWithRequesterById(id)
             .orElseThrow(ReviewRequestNotFoundException::new);
+        return requireReadable(request, userId);
+    }
+
+    public ReviewRequest findReadableForUpdate(Long id, Long userId) {
+        ReviewRequest request = reviewRequestRepository.findForUpdateById(id)
+            .orElseThrow(ReviewRequestNotFoundException::new);
+        return requireReadable(request, userId);
+    }
+
+    private ReviewRequest requireReadable(ReviewRequest request, Long userId) {
         if (request.isClosed() && !request.isRequestedBy(userId)) {
             throw new ReviewRequestNotFoundException();
         }

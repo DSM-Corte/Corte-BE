@@ -1,8 +1,10 @@
 package com.example.cortebe.domain.review.repository;
 
 import com.example.cortebe.domain.review.entity.ReviewReply;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
@@ -11,6 +13,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ReviewReplyRepository extends JpaRepository<ReviewReply, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<ReviewReply> findForUpdateByIdAndReviewRequestId(Long id, Long reviewRequestId);
 
     @EntityGraph(attributePaths = "author")
     Optional<ReviewReply> findWithAuthorByIdAndReviewRequestId(Long id, Long reviewRequestId);

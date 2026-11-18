@@ -3,6 +3,7 @@ package com.example.cortebe.domain.review.service;
 import com.example.cortebe.domain.review.dto.CommentPageResponse;
 import com.example.cortebe.domain.review.dto.CommentResponse;
 import com.example.cortebe.domain.review.dto.CreateCommentRequest;
+import com.example.cortebe.domain.review.dto.ReplyReactionResponse;
 import com.example.cortebe.domain.review.dto.ReplyResponse;
 import com.example.cortebe.domain.review.dto.UpdateCommentRequest;
 import com.example.cortebe.domain.review.entity.ReviewComment;
@@ -36,6 +37,7 @@ public class CommentService {
     private final ReviewReplyRepository reviewReplyRepository;
     private final UserRepository userRepository;
     private final ReviewRequestFinder finder;
+    private final ReplyReactionReader reactionReader;
 
     @Transactional
     public CommentResponse create(Long userId, Long requestId, CreateCommentRequest request) {
@@ -94,7 +96,9 @@ public class CommentService {
     private Map<Long, List<ReplyResponse>> repliesOf(List<ReviewComment> comments) {
         List<ReviewReply> replies = reviewReplyRepository
             .findByReviewCommentIdInOrderByIdAsc(comments.stream().map(ReviewComment::getId).toList());
+        Map<Long, List<ReplyReactionResponse>> reactions = reactionReader.findByReplyIds(replies);
         return replies.stream().collect(Collectors.groupingBy(reply -> reply.getReviewComment().getId(),
-            Collectors.mapping(ReplyResponse::from, Collectors.toList())));
+            Collectors.mapping(reply -> ReplyResponse.from(reply, reactions.getOrDefault(reply.getId(), List.of())),
+                Collectors.toList())));
     }
 }
