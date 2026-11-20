@@ -36,6 +36,36 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
         """)
     Page<Summary> findAllByTag(@Param("category") String category, @Param("tag") String tag, Pageable pageable);
 
+    @Query(value = """
+        select p.id as id, p.title as title, p.category as category, p.difficulty as difficulty
+        from Problem p
+        where (:category is null or p.category = :category)
+          and (:tag is null or :tag member of p.tags)
+          and p.difficulty in :difficulties
+          and (:solved is null or (:solved = true and exists (
+              select j.id from JudgeJob j where j.problem = p and j.author.id = :userId
+                  and j.submission = true and j.verdict = com.example.cortebe.domain.judge.runner.Verdict.ACCEPTED
+          )) or (:solved = false and not exists (
+              select j.id from JudgeJob j where j.problem = p and j.author.id = :userId
+                  and j.submission = true and j.verdict = com.example.cortebe.domain.judge.runner.Verdict.ACCEPTED
+          )))
+        """, countQuery = """
+        select count(p) from Problem p
+        where (:category is null or p.category = :category)
+          and (:tag is null or :tag member of p.tags)
+          and p.difficulty in :difficulties
+          and (:solved is null or (:solved = true and exists (
+              select j.id from JudgeJob j where j.problem = p and j.author.id = :userId
+                  and j.submission = true and j.verdict = com.example.cortebe.domain.judge.runner.Verdict.ACCEPTED
+          )) or (:solved = false and not exists (
+              select j.id from JudgeJob j where j.problem = p and j.author.id = :userId
+                  and j.submission = true and j.verdict = com.example.cortebe.domain.judge.runner.Verdict.ACCEPTED
+          )))
+        """)
+    Page<Summary> findFiltered(@Param("category") String category, @Param("tag") String tag,
+                               @Param("difficulties") Collection<Difficulty> difficulties,
+                               @Param("solved") Boolean solved, @Param("userId") Long userId, Pageable pageable);
+
     @Query("""
         select p.id as problemId, tag as tag
         from Problem p join p.tags tag

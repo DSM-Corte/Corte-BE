@@ -5,6 +5,10 @@ import com.example.cortebe.domain.problem.dto.ProblemPageResponse;
 import com.example.cortebe.domain.problem.dto.ProblemResponse;
 import com.example.cortebe.domain.problem.dto.UpdateProblemRequest;
 import com.example.cortebe.domain.problem.service.ProblemService;
+import com.example.cortebe.domain.problem.entity.DifficultyTier;
+import com.example.cortebe.domain.problem.entity.SolveStatus;
+import com.example.cortebe.global.error.exception.InvalidInputException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +46,13 @@ public class ProblemController {
     public ProblemPageResponse list(@RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "20") int size,
                                     @RequestParam(required = false) String category,
-                                    @RequestParam(required = false) String tag) {
-        return problemService.list(page, size, category, tag);
+                                    @RequestParam(required = false) String tag,
+                                    @RequestParam(required = false) String difficultyTier,
+                                    @RequestParam(required = false) String solveStatus,
+                                    @AuthenticationPrincipal Long userId) {
+        return problemService.list(page, size, category, tag,
+            parseFilter(difficultyTier, DifficultyTier.class, null),
+            parseFilter(solveStatus, SolveStatus.class, SolveStatus.ALL), userId);
     }
 
     @PatchMapping("/{id}")
@@ -56,4 +65,15 @@ public class ProblemController {
         problemService.delete(id);
         return ResponseEntity.noContent().build();
     }
+    private <E extends Enum<E>> E parseFilter(String value, Class<E> type, E defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return Enum.valueOf(type, value);
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidInputException();
+        }
+    }
+
 }
