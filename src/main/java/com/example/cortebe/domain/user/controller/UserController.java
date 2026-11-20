@@ -3,10 +3,13 @@ package com.example.cortebe.domain.user.controller;
 import com.example.cortebe.domain.review.dto.MyReviewRequestPageResponse;
 import com.example.cortebe.domain.review.dto.ReviewRequestStatusFilter;
 import com.example.cortebe.domain.review.service.ReviewRequestService;
+import com.example.cortebe.domain.user.dto.GithubLinkResponse;
 import com.example.cortebe.domain.user.dto.GrassResponse;
+import com.example.cortebe.domain.user.dto.LinkGithubRequest;
 import com.example.cortebe.domain.user.dto.ThemeResponse;
 import com.example.cortebe.domain.user.dto.UpdateThemeRequest;
 import com.example.cortebe.domain.user.dto.UserStatsResponse;
+import com.example.cortebe.domain.user.service.GithubLinkService;
 import com.example.cortebe.domain.user.service.GrassService;
 import com.example.cortebe.domain.user.service.ThemeService;
 import com.example.cortebe.domain.user.service.UserStatsService;
@@ -15,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,6 +35,7 @@ public class UserController {
     private final UserStatsService userStatsService;
     private final ReviewRequestService reviewRequestService;
     private final ThemeService themeService;
+    private final GithubLinkService githubLinkService;
 
     @GetMapping("/me/review-requests")
     public MyReviewRequestPageResponse getMyReviewRequests(
@@ -61,5 +66,11 @@ public class UserController {
     public ThemeResponse updateMyTheme(@AuthenticationPrincipal Long userId,
                                        @Valid @RequestBody UpdateThemeRequest request) {
         return themeService.updateMyTheme(userId, request);
+    }
+
+    @PutMapping("/me/github")
+    public GithubLinkResponse linkMyGithub(@AuthenticationPrincipal Long userId,
+                                           @Valid @RequestBody LinkGithubRequest request) {
+        return githubLinkService.link(userId, request);
     }
 }

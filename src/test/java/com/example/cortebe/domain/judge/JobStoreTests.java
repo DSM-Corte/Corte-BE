@@ -18,7 +18,10 @@ import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.problem.service.ProblemService;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.domain.github.event.ProblemSolvedEvent;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,7 +34,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
+@RecordApplicationEvents
 class JobStoreTests {
+    @Autowired ApplicationEvents events;
     @Autowired JobStore store;
     @Autowired TestCaseService cases;
     @Autowired ProblemRepository problems;
@@ -302,6 +307,83 @@ class JobStoreTests {
         assertThatThrownBy(() -> store.list(1L, null, 0, 0))
             .isInstanceOf(com.example.cortebe.global.error.exception.InvalidInputException.class);
         assertThat(store.list(1L, null, 0, 100).size()).isEqualTo(100);
+    }
+
+    @Test
+    void 연동한_회원의_정답_제출은_풀이_저장_이벤트를_한번_발행한다() {
+        // given
+        Long problemId = problemWithCase();
+        User user = linkedUser("solved@corte.test");
+        Long jobId = submission(user, problemId, "print(3)");
+        // when
+        store.claim(jobId);
+        store.finish(jobId, Verdict.ACCEPTED, 1, 10, null);
+        store.finish(jobId, Verdict.ACCEPTED, 1, 10, null);
+        // then
+        assertThat(events.stream(ProblemSolvedEvent.class)).singleElement().satisfies(event -> {
+            assertThat(event.installationId()).isEqualTo(77L);
+            assertThat(event.owner()).isEqualTo("octo");
+            assertThat(event.repo()).isEqualTo("solutions");
+            assertThat(event.problemId()).isEqualTo(problemId);
+            assertThat(event.title()).isEqualTo("합");
+            assertThat(event.description()).isEqualTo("두 수");
+            assertThat(event.language()).isEqualTo("Python");
+            assertThat(event.fileExtension()).isEqualTo("py");
+            assertThat(event.sourceCode()).isEqualTo("print(3)");
+        });
+    }
+
+    @Test
+    void 정답이_아니거나_비회원이거나_연동하지_않은_제출은_이벤트를_발행하지_않는다() {
+        // given
+        Long problemId = problemWithCase();
+        Long wrong = submission(linkedUser("wrong@corte.test"), problemId, "x");
+        Long guest = submission(null, problemId, "x");
+        Long unlinked = submission(users.saveAndFlush(User.builder().email("none@corte.test").password("password")
+            .nickname("none").build()), problemId, "x");
+        // when
+        store.claim(wrong);
+        store.finish(wrong, Verdict.WRONG_ANSWER, 0, 1, null);
+        store.claim(guest);
+        store.finish(guest, Verdict.ACCEPTED, 1, 1, null);
+        store.claim(unlinked);
+        store.finish(unlinked, Verdict.ACCEPTED, 1, 1, null);
+        // then
+        assertThat(events.stream(ProblemSolvedEvent.class)).isEmpty();
+    }
+
+    @Test
+    void 같은_문제를_다시_맞혀도_이벤트는_처음_한번만_발행한다() {
+        // given
+        Long problemId = problemWithCase();
+        User user = linkedUser("again@corte.test");
+        Long first = submission(user, problemId, "a");
+        Long second = submission(user, problemId, "b");
+        // when
+        store.claim(first);
+        store.finish(first, Verdict.ACCEPTED, 1, 1, null);
+        store.claim(second);
+        store.finish(second, Verdict.ACCEPTED, 1, 1, null);
+        // then
+        assertThat(events.stream(ProblemSolvedEvent.class)).hasSize(1);
+    }
+
+    private User linkedUser(String email) {
+        User user = User.builder().email(email).password("password").nickname("솔버").build();
+        user.linkGithub(77L, "octo", "solutions");
+        return users.saveAndFlush(user);
+    }
+
+    private Long submission(User user, Long problemId, String code) {
+        Long id = store.create(user == null ? null : user.getId(), new CreateJobRequest(problemId, Language.PYTHON, code), true).id();
+        entityManager.flush();
+        return id;
+    }
+
+    private Long problemWithCase() {
+        Long id = problem();
+        cases.create(id, new CreateTestCaseRequest("1 2", "3", false, 0));
+        return id;
     }
 
     private Long problem() {
