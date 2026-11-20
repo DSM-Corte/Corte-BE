@@ -16,6 +16,7 @@ import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.domain.user.service.UserTierService;
 import com.example.cortebe.global.error.exception.InvalidInputException;
 import com.example.cortebe.global.security.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class JobStore {
     private final ProblemRepository problems;
     private final UserRepository users;
     private final ObjectMapper mapper;
+    private final UserTierService userTierService;
 
     public record Case(String input, String expectedOutput) { }
     public record Snapshot(int timeLimitMs, int memoryLimitMb) { }
@@ -101,9 +103,12 @@ public class JobStore {
             .map(value -> new Case(value.getInput(), value.getExpectedOutput())).toList();
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void finish(Long id, Verdict verdict, int passed, long runtime, String message) {
-        jobs.finish(id, Verdict.RUNNING, verdict, passed, runtime, message, LocalDateTime.now());
+        if (jobs.finish(id, Verdict.RUNNING, verdict, passed, runtime, message, LocalDateTime.now()) == 1
+            && verdict == Verdict.ACCEPTED) {
+            userTierService.award(find(id));
+        }
         snapshots.deleteAllByJobId(id);
     }
 

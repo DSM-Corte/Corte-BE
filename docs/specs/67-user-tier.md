@@ -26,4 +26,23 @@
 
 ## 테스트 대응
 
-구현 단계에서 규칙·경계·HTTP 계약별 테스트와 레드 증거를 기록한다.
+| 명세 항목 | 테스트 | 레드 증거 |
+| --- | --- | --- |
+| 15단계 경계 직전·일치·직후, 최고 티어 | UserTierTests#승급_기준_직전과_정확한_기준과_직후를_구분한다 / 최고_단계_이후에도_점수_범위를_유지한다 | 구현 전 compileTestJava 실패: UserTier 없음 |
+| 난이도별 지급, 미지정 0점 | UserTierServiceTests#최초_정답은_문제_난이도별_점수를_지급한다 | 구현 전 compileTestJava 실패: UserTierService 없음 |
+| 기존 중복 정답, 반복 조회, 다음 단계·남은 점수 | UserTierServiceTests#기존_중복_정답을_한번만_반영하고_반복_조회해도_점수는_유지한다 | 구현 전 compileTestJava 실패: UserTierService 없음 |
+| 중복 콜백·언어 변경·난이도 변경 후 추가 지급 방지 | UserTierServiceTests#콜백_중복과_다른_언어의_재제출과_난이도_변경은_추가_지급하지_않는다 | 구현 전 compileTestJava 실패: UserTierService 없음 |
+| 미지정 후 새 정답에서만 지급 | UserTierServiceTests#미지정_문제는_난이도_지정만으로_지급하지_않고_새_정답에서_지급한다 | 구현 전 compileTestJava 실패: UserTierService 없음 |
+| 백개 초과 기존 기록 배치 처리 | UserTierServiceTests#기존_기록은_백개를_넘어도_빠짐없이_반영한다 | 구현 전 compileTestJava 실패: UserTierService 없음 |
+| 다른 회원·비회원·실행·오답 제외 | UserTierServiceTests#다른_회원과_비회원과_실행과_오답은_지급하지_않는다 | 구현 전 compileTestJava 실패: UserTierService 없음 |
+| GET 200 응답 필드와 인증 없음·없는 회원 401 A001 | UserControllerTests#내_티어는_점수와_다음_단계를_반환한다 / 티어는_인증_없이_조회할_수_없다 / 삭제된_회원_토큰으로_티어를_조회하면_인증_오류다 | 구현 전 전체 대상 테스트 실행은 컴파일 단계에서 실패. 되돌림 검사로 추가 확인 |
+| 동시 지급·조회 직렬화, 롤백 원자성 | UserTierServiceTests#동시_정답과_기존_기록_조회는_한번만_지급한다 / 채점_완료가_롤백되면_점수도_함께_롤백된다 | 구현 후 보강한 회귀 테스트. 되돌림 검사 결과는 검증 보고서에 기록 |
+| 회원·문제 유니크 제약 | ProblemRewardRepositoryTests#회원과_문제가_같은_지급_기록은_유니크_제약으로_막는다 | 구현 후 보강한 회귀 테스트. 되돌림 검사 결과는 검증 보고서에 기록 |
+
+## 검증 메모
+
+- 기준 빌드: Java 21, `./gradlew.bat build`, 종료 코드 0. tests=377, skipped=7, failures=0, errors=0.
+- 최초 레드: `./gradlew.bat test --tests '*UserTier*' --tests '*UserControllerTests'`, 종료 코드 1. UserTier·UserTierService 미구현으로 컴파일 실패.
+- 로컬 MySQL 8.4.13 HTTP: 비인증 GET 401/A001, 가입 201·로그인 후 GET 200 `{score:0,tier:BRONZE_3,nextTier:BRONZE_2,pointsToNextTier:30}`.
+- 같은 루비 문제 정답 2회 + 플래티넘 정답 1회: GET 200 `{score:100,tier:SILVER_3,nextTier:SILVER_2,pointsToNextTier:60}`. 반복 조회도 동일.
+- MySQL 검증은 `corte-tier-67-mysql` 일회용 컨테이너와 전용 DB를 사용하며 배포 서버 데이터에는 접근하지 않는다.
