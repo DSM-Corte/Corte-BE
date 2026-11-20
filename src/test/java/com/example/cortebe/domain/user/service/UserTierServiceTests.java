@@ -16,6 +16,7 @@ import com.example.cortebe.global.security.exception.UnauthorizedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +56,39 @@ class UserTierServiceTests {
         // when
         store.finish(job.getId(), Verdict.ACCEPTED, 1, 10, null);
         // then
+        assertThat(rewards.sumPoints(me.getId())).isEqualTo(points);
+        assertThat(rewards.findByUserIdAndProblemId(me.getId(), job.getProblem().getId()).orElseThrow().getPoints())
+            .isEqualTo(points);
         assertThat(tiers.get(me.getId()).score()).isEqualTo(points);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,true", "true,false", "false,false"})
+    void 비회원과_단순_실행의_정답_완료에는_지급_기록이_없다(boolean member, boolean submission) {
+        // given
+        User me = user("me");
+        JudgeJob job = job(member ? me : null, problem(Difficulty.GOLD_3), submission);
+        long before = rewards.count();
+        store.claim(job.getId());
+        // when
+        store.finish(job.getId(), Verdict.ACCEPTED, 1, 10, null);
+        // then
+        assertThat(rewards.count()).isEqualTo(before);
+        assertThat(rewards.sumPoints(me.getId())).isZero();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Verdict.class, names = {"ACCEPTED", "QUEUED", "RUNNING"}, mode = EnumSource.Mode.EXCLUDE)
+    void 정답이_아닌_완료_판정은_점수를_지급하지_않는다(Verdict verdict) {
+        // given
+        User me = user("me");
+        JudgeJob job = job(me, problem(Difficulty.RUBY_1), true);
+        store.claim(job.getId());
+        // when
+        store.finish(job.getId(), verdict, 0, 10, null);
+        // then
+        assertThat(rewards.findByUserIdAndProblemId(me.getId(), job.getProblem().getId())).isEmpty();
+        assertThat(tiers.get(me.getId()).score()).isZero();
     }
 
     @Test
