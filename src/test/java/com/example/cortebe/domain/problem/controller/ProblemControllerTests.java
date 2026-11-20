@@ -1,5 +1,16 @@
 package com.example.cortebe.domain.problem.controller;
 
+import com.example.cortebe.domain.problem.entity.Difficulty;
+import com.example.cortebe.domain.problem.entity.Problem;
+import com.example.cortebe.domain.problem.repository.ProblemRepository;
+import com.example.cortebe.domain.user.entity.User;
+import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.domain.judge.entity.JudgeJob;
+import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
+import com.example.cortebe.domain.judge.runner.Language;
+import com.example.cortebe.domain.judge.runner.Verdict;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import com.example.cortebe.global.security.jwt.JwtProvider;
 import com.example.cortebe.global.security.Role;
 import org.junit.jupiter.api.Test;
@@ -14,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -72,6 +84,140 @@ class ProblemControllerTests {
             performAsAdmin(patch(location).contentType(MediaType.APPLICATION_JSON).content("{\"languageMemoryLimitsMb\":" + invalid + "}"))
                 .andExpect(status().isBadRequest());
         }
+    }
+
+    @Autowired
+    private ProblemRepository filterProblems;
+
+    @Autowired
+    private UserRepository filterUsers;
+
+    @Autowired
+    private JudgeJobRepository filterJobs;
+
+    @Test
+    void 등급별_다섯_단계와_미지정을_공개_조회한다() throws Exception {
+        // given
+        for (Difficulty difficulty : Difficulty.values()) {
+            filterProblem(difficulty, "구현", Set.of("배열"));
+        }
+        // when & then
+        for (String tier : new String[]{"BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "RUBY", "UNRATED"}) {
+            mockMvc.perform(get("/api/problems").param("difficultyTier", tier))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(tier.equals("UNRATED") ? 1 : 5));
+        }
+        mockMvc.perform(get("/api/problems"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(31));
+    }
+
+    @Test
+    void 해결함은_본인의_정식_정답만_중복없이_포함한다() throws Exception {
+        // given
+        User me = filterUser("filter-me");
+        User other = filterUser("filter-other");
+        Problem solved = filterProblem(Difficulty.BRONZE_5, "구현", Set.of("배열"));
+        Problem otherSolved = filterProblem(Difficulty.BRONZE_1, "구현", Set.of());
+        Problem execution = filterProblem(Difficulty.SILVER_5, "구현", Set.of());
+        Problem guest = filterProblem(Difficulty.GOLD_5, "구현", Set.of());
+        filterJob(solved, me, true, Verdict.WRONG_ANSWER);
+        filterJob(solved, me, true, Verdict.ACCEPTED);
+        filterJob(solved, me, true, Verdict.ACCEPTED);
+        filterJob(otherSolved, other, true, Verdict.ACCEPTED);
+        filterJob(execution, me, false, Verdict.ACCEPTED);
+        filterJob(guest, null, true, Verdict.ACCEPTED);
+        // when & then
+        mockMvc.perform(get("/api/problems").param("solveStatus", "SOLVED")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(me.getId())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(solved.getId()));
+        mockMvc.perform(get("/api/problems").param("solveStatus", "SOLVED")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(other.getId())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(otherSolved.getId()));
+    }
+
+    @Test
+    void 미해결은_오답과_미제출을_포함하고_정답은_제외한다() throws Exception {
+        // given
+        User me = filterUser("unsolved-me");
+        Problem solved = filterProblem(Difficulty.BRONZE_5, "구현", Set.of());
+        Problem wrong = filterProblem(Difficulty.BRONZE_1, "구현", Set.of());
+        Problem untouched = filterProblem(Difficulty.SILVER_5, "구현", Set.of());
+        filterJob(solved, me, true, Verdict.ACCEPTED);
+        filterJob(wrong, me, true, Verdict.WRONG_ANSWER);
+        // when & then
+        mockMvc.perform(get("/api/problems").param("solveStatus", "UNSOLVED")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(me.getId())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.content[0].id").value(untouched.getId()))
+            .andExpect(jsonPath("$.content[1].id").value(wrong.getId()));
+    }
+
+    @Test
+    void 모든_필터를_결합하고_페이징과_최신순을_유지한다() throws Exception {
+        // given
+        User me = filterUser("combined-me");
+        Problem first = filterProblem(Difficulty.BRONZE_5, "구현", Set.of("배열"));
+        Problem second = filterProblem(Difficulty.BRONZE_1, "구현", Set.of("배열"));
+        filterProblem(Difficulty.SILVER_5, "구현", Set.of("배열"));
+        filterProblem(Difficulty.BRONZE_3, "그래프", Set.of("배열"));
+        filterProblem(Difficulty.BRONZE_2, "구현", Set.of("정렬"));
+        filterJob(first, me, true, Verdict.ACCEPTED);
+        filterJob(second, me, true, Verdict.ACCEPTED);
+        filterJob(second, me, true, Verdict.ACCEPTED);
+        // when & then
+        mockMvc.perform(get("/api/problems").param("difficultyTier", "BRONZE").param("solveStatus", "SOLVED")
+                .param("category", "구현").param("tag", "배열").param("size", "1").param("page", "1")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(me.getId())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(first.getId()));
+        mockMvc.perform(get("/api/problems").param("difficultyTier", "RUBY"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty())
+            .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void 개인_상태_필터는_로그인과_존재하는_회원을_요구한다() throws Exception {
+        // when & then
+        for (String solveStatus : new String[]{"SOLVED", "UNSOLVED"}) {
+            mockMvc.perform(get("/api/problems").param("solveStatus", solveStatus))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("A001"));
+            mockMvc.perform(get("/api/problems").param("solveStatus", solveStatus)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(999999L)))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("A001"));
+        }
+        mockMvc.perform(get("/api/problems").param("solveStatus", "ALL"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void 잘못된_필터값은_400을_반환한다() throws Exception {
+        // when & then
+        for (String tier : new String[]{"BRONZE_5", "UNKNOWN", "bronze", " "}) {
+            mockMvc.perform(get("/api/problems").param("difficultyTier", tier))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("C001"));
+        }
+        for (String solveStatus : new String[]{"UNKNOWN", "solved", " "}) {
+            mockMvc.perform(get("/api/problems").param("solveStatus", solveStatus))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("C001"));
+        }
+    }
+
+    private Problem filterProblem(Difficulty difficulty, String category, Set<String> tags) {
+        return filterProblems.saveAndFlush(Problem.builder().title(difficulty.name()).description("필터 테스트")
+            .difficulty(difficulty).category(category).tags(tags).memoryLimitMb(256).timeLimitMs(1000).build());
+    }
+
+    private User filterUser(String name) {
+        return filterUsers.saveAndFlush(User.builder().email(name + "@corte.com").password("password").nickname(name).build());
+    }
+
+    private void filterJob(Problem problem, User user, boolean submission, Verdict verdict) {
+        JudgeJob job = JudgeJob.builder().problem(problem).author(user).submission(submission)
+            .language(Language.PYTHON).code("print(1)").snapshot("{}").tokenHash("filter-token").totalCount(1).build();
+        ReflectionTestUtils.setField(job, "verdict", verdict);
+        filterJobs.saveAndFlush(job);
     }
 
     private static final String CREATE_REQUEST = """

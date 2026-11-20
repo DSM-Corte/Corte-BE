@@ -9,6 +9,12 @@ import com.example.cortebe.domain.problem.dto.ProblemPageResponse;
 import com.example.cortebe.domain.problem.dto.ProblemResponse;
 import com.example.cortebe.domain.problem.dto.UpdateProblemRequest;
 import com.example.cortebe.domain.problem.entity.Problem;
+import com.example.cortebe.domain.problem.entity.Difficulty;
+import com.example.cortebe.domain.problem.entity.DifficultyTier;
+import com.example.cortebe.domain.problem.entity.SolveStatus;
+import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.global.security.exception.UnauthorizedException;
+import com.example.cortebe.global.error.exception.InvalidInputException;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.workbook.repository.WorkbookProblemRepository;
 import com.example.cortebe.global.error.exception.CorteException;
@@ -20,6 +26,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -30,6 +37,7 @@ import java.util.Set;
 public class ProblemService {
 
     private final ProblemRepository problemRepository;
+    private final UserRepository userRepository;
     private final JudgeJobRepository judgeJobs;
     private final TestCaseRepository testCases;
     private final CodeDraftRepository codeDraftRepository;
@@ -57,16 +65,33 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public ProblemPageResponse list(int page, int size, String category, String tag) {
+        return list(page, size, category, tag, null, SolveStatus.ALL, null);
+    }
+
+    @Transactional(readOnly = true)
+    public ProblemPageResponse list(int page, int size, String category, String tag,
+                                    DifficultyTier difficultyTier, SolveStatus solveStatus, Long userId) {
         if (page < 0 || size < 1 || size > 100
             || (category != null && (category.isBlank() || category.length() > 50))) {
-            throw new CorteException(GlobalErrorCode.INVALID_INPUT);
+            throw new InvalidInputException();
         }
         if (tag != null && (tag.isBlank() || tag.length() > 30)) {
-            throw new CorteException(GlobalErrorCode.INVALID_INPUT);
+            throw new InvalidInputException();
+        }
+        if (solveStatus == null) {
+            throw new InvalidInputException();
+        }
+        if (solveStatus != SolveStatus.ALL && (userId == null || !userRepository.existsById(userId))) {
+            throw new UnauthorizedException();
         }
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         Page<ProblemRepository.Summary> problems;
-        if (tag != null) {
+        if (difficultyTier != null || solveStatus != SolveStatus.ALL) {
+            Boolean solved = solveStatus == SolveStatus.ALL ? null : solveStatus == SolveStatus.SOLVED;
+            problems = problemRepository.findFiltered(category, tag == null ? null : tag.strip(),
+                difficultyTier == null ? Arrays.asList(Difficulty.values()) : difficultyTier.difficulties(),
+                solved, userId, pageRequest);
+        } else if (tag != null) {
             problems = problemRepository.findAllByTag(category, tag.strip(), pageRequest);
         } else {
             problems = category == null
