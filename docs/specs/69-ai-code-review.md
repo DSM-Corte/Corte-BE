@@ -35,10 +35,9 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 |
 | --- | --- |
-| 생성 성공·저장·줄 코멘트 보정 | `AiReviewServiceTests`, `AiReviewApiTests` |
-| 키 미설정 503 I003 | `AiReviewServiceTests`, `AiReviewApiTests` |
-| 중복 409 I002 | `AiReviewServiceTests`, `AiReviewApiTests`(유니크 제약) |
-| 남의 제출 403, 없는 제출·실행 404 | `AiReviewServiceTests`, `AiReviewApiTests` |
-| 호출 실패 502 I004, 해석 실패 502 I005 | `AiReviewServiceTests` |
-| 조회 200, 없으면 404 I001, 토큰 없음 401 | `AiReviewApiTests` |
-| Gemini 요청 형식(경로, 헤더, 본문) | `GeminiClientTests`(JDK HttpServer 스텁) |
+| 생성 성공·저장·조회 200/201 | `AiReviewApiTests` |
+| 줄 코멘트 보정(최대 4개, 줄 범위, 빈 본문), 기본값, 요청 형식 | `GeminiReviewerTests` |
+| 키 미설정 503 I003(외부 호출 없음) | `AiReviewNotConfiguredApiTests`, `GeminiReviewerTests` |
+| 중복 409 I002, 유니크 제약 | `AiReviewApiTests` |
+| 남의 제출 403, 없는 제출·실행 404, 리뷰 없음 404 I001, 토큰 없음 401 | `AiReviewApiTests` |
+| 호출 실패 502 I004, 해석 실패 502 I005 | `GeminiReviewerTests`, `AiReviewApiTests` |

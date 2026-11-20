@@ -17,6 +17,9 @@ spring:
     openfeign:
       client:
         config:
+          gemini:
+            connect-timeout: ${GEMINI_CONNECT_TIMEOUT_MS:5000}
+            read-timeout: ${GEMINI_READ_TIMEOUT_MS:60000}
           judge0:
             connect-timeout: ${JUDGE0_REQUEST_TIMEOUT_MS:5000}
             read-timeout: ${JUDGE0_READ_TIMEOUT_MS:${JUDGE0_REQUEST_TIMEOUT_MS:30000}}
@@ -36,6 +39,10 @@ github:
   app:
     client-id: ${GITHUB_APP_CLIENT_ID:}
     private-key: ${GITHUB_APP_PRIVATE_KEY:}
+
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
 
 judge0:
   url: ${JUDGE0_URL:http://localhost:2358}
