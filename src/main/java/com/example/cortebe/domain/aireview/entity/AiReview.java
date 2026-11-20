@@ -46,16 +46,16 @@ public class AiReview {
     private String model;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String summary;
 
     // 줄 코멘트 배열과 개선 제안은 조회 조건이 없어 JSON 문자열로 저장한다
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String comments;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String suggestion;
 
     @CreatedDate

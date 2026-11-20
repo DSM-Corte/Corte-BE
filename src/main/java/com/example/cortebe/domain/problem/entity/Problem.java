@@ -42,7 +42,7 @@ public class Problem {
     private String title;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String description;
 
     @Column(nullable = false, length = 50)
