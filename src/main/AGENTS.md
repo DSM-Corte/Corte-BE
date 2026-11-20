@@ -81,7 +81,8 @@
 - 외부 API 주소는 프로퍼티로 바꿀 수 있게 한다(`github.api-url`). 테스트는 이 값을 스텁 서버 주소로 바꾼다.
 - GitHub 저장 형식: 디렉터리 `"{problemId}. {제목}"`(`/`·`\`·제어문자는 `_`), 파일 `README.md`·`Main.{확장자}`,
   커밋 메시지 `[{problemId}] {제목} 풀이`, 레포의 기본 브랜치에 저장한다.
-- 풀이 저장 이벤트는 GitHub App `installationId`, `owner`, `repo`를 요구한다. 회원에 이 연동 정보가 아직 없다.
+- 풀이 저장 이벤트는 GitHub App `installationId`, `owner`, `repo`를 요구한다. 회원의 nullable 컬럼(`github*`)에 저장하며 설정 API는 아직 없다.
+  `JobStore.finish`가 연동된 회원의 첫 정답 제출에서 이벤트를 발행한다(실패는 로그만).
 - 언어 이름(`language`)과 파일 확장자(`fileExtension`)는 따로 다룬다.
 - 실행·채점의 `JobManager`는 트랜잭션 없는 작업 조정자이고, DB 접근·DTO 변환은 `JobStore`에서 수행한다.
   설정에 따라 유한 큐와 세마포어를 함께 초기화해야 하므로 `JobManager`는 명시적 주입 생성자를 사용한다.
