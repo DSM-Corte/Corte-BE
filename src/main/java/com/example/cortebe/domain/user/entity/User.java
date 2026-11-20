@@ -42,6 +42,15 @@ public class User {
     @Column(length = 20)
     private ThemeColor themeColor;
 
+    // 기존 회원 행이 있어 빈 값을 허용한다. 세 값이 모두 있어야 GitHub 연동으로 본다
+    private Long githubInstallationId;
+
+    @Column(length = 100)
+    private String githubOwner;
+
+    @Column(length = 100)
+    private String githubRepo;
+
     @Builder
     public User(String email, String password, String nickname) {
         this.email = email;
@@ -56,5 +65,15 @@ public class User {
         if (themeColor != null) {
             this.themeColor = themeColor;
         }
+    }
+
+    public void linkGithub(long installationId, String owner, String repo) {
+        this.githubInstallationId = installationId;
+        this.githubOwner = owner;
+        this.githubRepo = repo;
+    }
+
+    public boolean isGithubLinked() {
+        return githubInstallationId != null && githubOwner != null && githubRepo != null;
     }
 }

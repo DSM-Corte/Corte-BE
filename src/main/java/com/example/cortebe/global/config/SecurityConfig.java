@@ -40,6 +40,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/problems", "/api/problems/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/problems", "/api/problems/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/problems", "/api/problems/**").hasRole("ADMIN")
+                // 다른 계정의 설치 ID를 저장해 그 레포에 쓰는 것을 막으려고 관리자만 허용한다
+                .requestMatchers(HttpMethod.PUT, "/api/users/me/github").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, e) -> {
