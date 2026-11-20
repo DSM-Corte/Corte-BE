@@ -23,9 +23,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -212,6 +214,87 @@ class UserControllerTests {
     void 토큰_없이_테마를_조회하면_401을_준다() throws Exception {
         // when & then
         mockMvc.perform(get("/api/users/me/theme"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("A001"));
+    }
+
+    @Test
+    void GitHub_연동_정보를_저장하면_연동된_회원이_된다() throws Exception {
+        // given
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+        String token = tokenOf(me);
+
+        // when
+        mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"installationId": 12345, "owner": "treegus", "repo": "corte-solutions"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.installationId").value(12345))
+            .andExpect(jsonPath("$.owner").value("treegus"))
+            .andExpect(jsonPath("$.repo").value("corte-solutions"));
+
+        // then
+        entityManager.flush();
+        entityManager.clear();
+        User saved = userRepository.findById(me.getId()).orElseThrow();
+        assertThat(saved.isGithubLinked()).isTrue();
+        assertThat(saved.getGithubInstallationId()).isEqualTo(12345L);
+    }
+
+    @Test
+    void GitHub_연동_정보를_다시_저장하면_덮어쓴다() throws Exception {
+        // given
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+        me.linkGithub(1L, "old", "old-repo");
+        String token = tokenOf(me);
+
+        // when
+        mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"installationId": 2, "owner": "new", "repo": "new-repo"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.owner").value("new"));
+
+        // then
+        entityManager.flush();
+        entityManager.clear();
+        User saved = userRepository.findById(me.getId()).orElseThrow();
+        assertThat(saved.getGithubOwner()).isEqualTo("new");
+        assertThat(saved.getGithubRepo()).isEqualTo("new-repo");
+    }
+
+    @Test
+    void GitHub_연동_정보가_비었거나_올바르지_않으면_400을_준다() throws Exception {
+        // given
+        String token = tokenOf(userRepository.save(new User("me@corte.com", "password", "me")));
+
+        // when & then
+        for (String body : new String[] {
+            "{}",
+            "{\"installationId\": 0, \"owner\": \"a\", \"repo\": \"b\"}",
+            "{\"installationId\": 1, \"owner\": \" \", \"repo\": \"b\"}",
+            "{\"installationId\": 1, \"owner\": \"a\", \"repo\": \"\"}"
+        }) {
+            mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+        }
+    }
+
+    @Test
+    void 토큰_없이_GitHub_연동_정보를_저장하면_401을_준다() throws Exception {
+        // when & then
+        mockMvc.perform(put("/api/users/me/github")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"installationId": 1, "owner": "a", "repo": "b"}
+                    """))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.code").value("A001"));
     }
