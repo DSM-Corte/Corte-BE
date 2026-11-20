@@ -26,17 +26,17 @@ public class AiReviewStore {
     private final ObjectMapper mapper;
 
     // 외부 호출 전에 소유권과 중복을 확인하고, 호출에 필요한 값만 꺼낸다
-    public GeminiReviewer.Source loadSource(Long userId, Long submissionId) {
+    public ClaudeReviewer.Source loadSource(Long userId, Long submissionId) {
         JudgeJob job = findOwnedSubmission(userId, submissionId);
         if (reviews.existsBySubmissionId(submissionId)) {
             throw new DuplicateAiReviewException();
         }
-        return new GeminiReviewer.Source(job.getProblem().getTitle(), job.getLanguage().name(),
+        return new ClaudeReviewer.Source(job.getProblem().getTitle(), job.getLanguage().name(),
             job.getRuntimeMs(), job.getCode());
     }
 
     @Transactional
-    public AiReviewResponse save(Long userId, Long submissionId, GeminiReviewer.Result result) {
+    public AiReviewResponse save(Long userId, Long submissionId, ClaudeReviewer.Result result) {
         JudgeJob job = findOwnedSubmission(userId, submissionId);
         try {
             AiReview review = reviews.saveAndFlush(AiReview.builder()

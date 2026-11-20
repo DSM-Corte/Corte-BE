@@ -1,6 +1,6 @@
 package com.example.cortebe.domain.aireview;
 
-import com.example.cortebe.domain.aireview.client.GeminiClient;
+import com.example.cortebe.domain.aireview.client.ClaudeClient;
 import com.example.cortebe.domain.judge.entity.JudgeJob;
 import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
 import com.example.cortebe.domain.judge.runner.Language;
@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@TestPropertySource(properties = {"gemini.api-key=", "gemini.model=test-model"})
+@TestPropertySource(properties = {"claude.api-key=", "claude.model=test-model"})
 class AiReviewNotConfiguredApiTests {
 
     @Autowired MockMvc mvc;
@@ -37,7 +37,7 @@ class AiReviewNotConfiguredApiTests {
     @Autowired ProblemRepository problems;
     @Autowired UserRepository users;
     @Autowired JwtProvider jwtProvider;
-    @MockitoBean GeminiClient geminiClient;
+    @MockitoBean ClaudeClient claudeClient;
 
     @Test
     void 키가_없으면_외부_호출_없이_503_I003을_반환한다() throws Exception {
@@ -54,6 +54,6 @@ class AiReviewNotConfiguredApiTests {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(me.getId())))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.code").value("I003"));
-        then(geminiClient).should(never()).generateContent(any(), any(), any());
+        then(claudeClient).should(never()).complete(any(), any(), any());
     }
 }
