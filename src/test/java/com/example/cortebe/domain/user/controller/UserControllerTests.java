@@ -8,6 +8,7 @@ import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.global.security.Role;
 import com.example.cortebe.global.security.jwt.JwtProvider;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -222,7 +223,7 @@ class UserControllerTests {
     void GitHub_연동_정보를_저장하면_연동된_회원이_된다() throws Exception {
         // given
         User me = userRepository.save(new User("me@corte.com", "password", "me"));
-        String token = tokenOf(me);
+        String token = adminTokenOf(me);
 
         // when
         mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token)
@@ -248,7 +249,7 @@ class UserControllerTests {
         // given
         User me = userRepository.save(new User("me@corte.com", "password", "me"));
         me.linkGithub(1L, "old", "old-repo");
-        String token = tokenOf(me);
+        String token = adminTokenOf(me);
 
         // when
         mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token)
@@ -270,7 +271,7 @@ class UserControllerTests {
     @Test
     void GitHub_연동_정보가_비었거나_올바르지_않으면_400을_준다() throws Exception {
         // given
-        String token = tokenOf(userRepository.save(new User("me@corte.com", "password", "me")));
+        String token = adminTokenOf(userRepository.save(new User("me@corte.com", "password", "me")));
 
         // when & then
         for (String body : new String[] {
@@ -297,6 +298,29 @@ class UserControllerTests {
                     """))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.code").value("A001"));
+    }
+
+    @Test
+    void 관리자가_아니면_GitHub_연동_정보를_저장할_수_없다() throws Exception {
+        // given
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+
+        // when
+        mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, tokenOf(me))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"installationId": 1, "owner": "a", "repo": "b"}
+                    """))
+            .andExpect(status().isForbidden());
+
+        // then
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(userRepository.findById(me.getId()).orElseThrow().isGithubLinked()).isFalse();
+    }
+
+    private String adminTokenOf(User user) {
+        return "Bearer " + jwtProvider.createAccessToken(user.getId(), Role.ADMIN);
     }
 
     private String tokenOf(User user) {
