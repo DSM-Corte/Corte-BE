@@ -10,11 +10,11 @@ import org.springframework.stereotype.Service;
 public class AiReviewService {
 
     private final AiReviewStore store;
-    private final GeminiReviewer reviewer;
+    private final ClaudeReviewer reviewer;
 
     public AiReviewResponse create(Long userId, Long submissionId) {
-        GeminiReviewer.Source source = store.loadSource(userId, submissionId);
-        GeminiReviewer.Result result = reviewer.review(source);
+        ClaudeReviewer.Source source = store.loadSource(userId, submissionId);
+        ClaudeReviewer.Result result = reviewer.review(source);
         return store.save(userId, submissionId, result);
     }
 

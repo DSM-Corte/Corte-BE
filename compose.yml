@@ -26,6 +26,7 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       JUDGE0_URL: http://judge0-server:2358
       JUDGE_ENABLED: ${JUDGE_ENABLED:-true}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
     ports:
       - "8080:8080"
     depends_on:

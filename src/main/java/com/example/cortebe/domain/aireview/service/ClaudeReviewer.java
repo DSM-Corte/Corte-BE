@@ -1,13 +1,7 @@
 package com.example.cortebe.domain.aireview.service;
 
-import com.example.cortebe.domain.aireview.GeminiProperties;
-import com.example.cortebe.domain.aireview.client.GeminiClient;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.Candidate;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.Content;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.GenerateContentRequest;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.GenerateContentResponse;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.GenerationConfig;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.Part;
+import com.example.cortebe.domain.aireview.ClaudeProperties;
+import com.example.cortebe.domain.aireview.client.ClaudeClient;
 import com.example.cortebe.domain.aireview.dto.AiReviewResponse.Comment;
 import com.example.cortebe.domain.aireview.dto.AiReviewResponse.Suggestion;
 import com.example.cortebe.domain.aireview.exception.AiReviewCallFailedException;
@@ -25,12 +19,12 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class GeminiReviewer {
+public class ClaudeReviewer {
 
     static final int MAX_COMMENTS = 4;
 
-    private final GeminiClient client;
-    private final GeminiProperties properties;
+    private final ClaudeClient client;
+    private final ClaudeProperties properties;
     private final ObjectMapper mapper;
 
     public record Source(String problemTitle, String language, long runtimeMs, String code) {
@@ -52,39 +46,18 @@ public class GeminiReviewer {
     }
 
     private String call(Source source) {
-        GenerateContentRequest request = new GenerateContentRequest(
-            List.of(new Content("user", List.of(new Part(buildPrompt(source))))),
-            new GenerationConfig("application/json", 0.25));
-        GenerateContentResponse response;
+        String text;
         try {
-            response = client.generateContent(properties.apiKey(), properties.model(), request);
+            text = client.complete(properties.apiKey(), properties.model(), buildPrompt(source));
         } catch (RuntimeException e) {
             // 키가 들어간 요청 정보는 로그에 남기지 않는다
-            log.warn("Gemini 호출에 실패했습니다. 원인: {}", e.getClass().getSimpleName());
+            log.warn("Claude 호출에 실패했습니다. 원인: {}", e.getClass().getSimpleName());
             throw new AiReviewCallFailedException();
         }
-        String text = extractText(response);
-        if (text.isBlank()) {
+        if (text == null || text.isBlank()) {
             throw new AiReviewInvalidResponseException();
         }
         return text;
-    }
-
-    private String extractText(GenerateContentResponse response) {
-        if (response == null || response.candidates() == null || response.candidates().isEmpty()) {
-            return "";
-        }
-        Candidate candidate = response.candidates().get(0);
-        if (candidate == null || candidate.content() == null || candidate.content().parts() == null) {
-            return "";
-        }
-        StringBuilder text = new StringBuilder();
-        for (Part part : candidate.content().parts()) {
-            if (part != null && part.text() != null) {
-                text.append(part.text());
-            }
-        }
-        return text.toString().trim();
     }
 
     private JsonNode parse(String text) {
