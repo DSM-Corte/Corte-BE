@@ -35,6 +35,8 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
     @Query("update JudgeJob j set j.verdict = :next, j.updatedAt = :now where j.id = :id and j.verdict = :previous")
     int transition(Long id, Verdict previous, Verdict next, LocalDateTime now);
 
+    boolean existsByAuthorIdAndProblemIdAndSubmissionTrueAndVerdictAndIdNot(Long authorId, Long problemId, Verdict verdict, Long id);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update JudgeJob j set j.verdict = :verdict, j.passedCount = :passed, j.runtimeMs = :runtime, "
         + "j.message = :message, j.snapshot = '', j.stdin = null, j.updatedAt = :now where j.id = :id and j.verdict = :previous")

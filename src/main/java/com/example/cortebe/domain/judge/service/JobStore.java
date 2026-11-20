@@ -18,7 +18,10 @@ import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
 import com.example.cortebe.global.error.exception.InvalidInputException;
 import com.example.cortebe.global.security.exception.UnauthorizedException;
+import com.example.cortebe.domain.github.event.ProblemSolvedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -35,6 +38,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -45,6 +49,7 @@ public class JobStore {
     private final ProblemRepository problems;
     private final UserRepository users;
     private final ObjectMapper mapper;
+    private final ApplicationEventPublisher events;
 
     public record Case(String input, String expectedOutput) { }
     public record Snapshot(int timeLimitMs, int memoryLimitMb) { }
@@ -103,8 +108,50 @@ public class JobStore {
 
     @Transactional
     public void finish(Long id, Verdict verdict, int passed, long runtime, String message) {
-        jobs.finish(id, Verdict.RUNNING, verdict, passed, runtime, message, LocalDateTime.now());
+        int updated = jobs.finish(id, Verdict.RUNNING, verdict, passed, runtime, message, LocalDateTime.now());
         snapshots.deleteAllByJobId(id);
+        if (updated == 1 && verdict == Verdict.ACCEPTED) publishSolved(id);
+    }
+
+    // 채점 결과 확정을 깨뜨리지 않도록 실패는 로그만 남긴다
+    private void publishSolved(Long id) {
+        try {
+            JudgeJob job = find(id);
+            User author = job.getAuthor();
+            if (!job.isSubmission() || author == null || !author.isGithubLinked()) return;
+            Problem problem = job.getProblem();
+            if (jobs.existsByAuthorIdAndProblemIdAndSubmissionTrueAndVerdictAndIdNot(
+                author.getId(), problem.getId(), Verdict.ACCEPTED, id)) return;
+            events.publishEvent(ProblemSolvedEvent.builder().installationId(author.getGithubInstallationId())
+                .owner(author.getGithubOwner()).repo(author.getGithubRepo()).problemId(problem.getId())
+                .title(problem.getTitle()).description(problem.getDescription())
+                .language(languageName(job.getLanguage())).fileExtension(extension(job.getLanguage()))
+                .sourceCode(job.getCode()).build());
+        } catch (RuntimeException exception) {
+            log.error("풀이 저장 이벤트 발행에 실패했습니다: {}", id, exception);
+        }
+    }
+
+    private static String languageName(Language language) {
+        return switch (language) {
+            case C -> "C";
+            case CPP -> "C++";
+            case JAVA -> "Java";
+            case CSHARP -> "C#";
+            case JAVASCRIPT -> "JavaScript";
+            case PYTHON -> "Python";
+        };
+    }
+
+    private static String extension(Language language) {
+        return switch (language) {
+            case C -> "c";
+            case CPP -> "cpp";
+            case JAVA -> "java";
+            case CSHARP -> "cs";
+            case JAVASCRIPT -> "js";
+            case PYTHON -> "py";
+        };
     }
 
     @Transactional
