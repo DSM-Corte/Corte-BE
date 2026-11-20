@@ -35,9 +35,9 @@ public class JudgeCaseSnapshot {
     private JudgeJob job;
     @Column(name = "case_order", nullable = false)
     private int caseOrder;
-    @Lob @Column(nullable = false)
+    @Lob @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String input;
-    @Lob @Column(nullable = false)
+    @Lob @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String expectedOutput;
     @CreatedDate @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

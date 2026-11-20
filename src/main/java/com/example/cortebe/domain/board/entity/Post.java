@@ -38,7 +38,7 @@ public class Post {
 
     // 마크다운 원문을 그대로 저장한다 (렌더링은 클라이언트 책임)
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

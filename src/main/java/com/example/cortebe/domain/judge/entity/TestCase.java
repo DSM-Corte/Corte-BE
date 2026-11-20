@@ -34,9 +34,9 @@ public class TestCase {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "problem_id", nullable = false)
     private Problem problem;
-    @Lob @Column(nullable = false)
+    @Lob @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String input;
-    @Lob @Column(nullable = false)
+    @Lob @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String expectedOutput;
     @Column(nullable = false)
     private boolean publicExample;
