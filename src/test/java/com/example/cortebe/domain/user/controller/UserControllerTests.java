@@ -343,12 +343,62 @@ class UserControllerTests {
                 .content("""
                     {"installationId": 1, "owner": "a", "repo": "b"}
                     """))
-            .andExpect(status().isForbidden());
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("A004"));
 
         // then
         entityManager.flush();
         entityManager.clear();
         assertThat(userRepository.findById(me.getId()).orElseThrow().isGithubLinked()).isFalse();
+    }
+
+    @Test
+    void 관리자는_저장한_GitHub_연동_정보를_조회한다() throws Exception {
+        // given
+        String token = adminTokenOf(userRepository.save(new User("me@corte.com", "password", "me")));
+        mockMvc.perform(put("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"installationId\": 7, \"owner\": \"corte\", \"repo\": \"solutions\"}"))
+            .andExpect(status().isOk());
+
+        // when & then
+        mockMvc.perform(get("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.installationId").value(7))
+            .andExpect(jsonPath("$.owner").value("corte"))
+            .andExpect(jsonPath("$.repo").value("solutions"));
+    }
+
+    @Test
+    void 연동하지_않았으면_GitHub_연동_정보가_모두_null이다() throws Exception {
+        // given
+        String token = adminTokenOf(userRepository.save(new User("me@corte.com", "password", "me")));
+
+        // when & then
+        mockMvc.perform(get("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.installationId").value(nullValue()))
+            .andExpect(jsonPath("$.owner").value(nullValue()))
+            .andExpect(jsonPath("$.repo").value(nullValue()));
+    }
+
+    @Test
+    void 관리자가_아니면_GitHub_연동_정보를_조회할_수_없다() throws Exception {
+        // given
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+
+        // when & then
+        mockMvc.perform(get("/api/users/me/github").header(HttpHeaders.AUTHORIZATION, tokenOf(me)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("A004"));
+    }
+
+    @Test
+    void 토큰_없이_GitHub_연동_정보를_조회하면_401을_준다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/users/me/github"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("A001"));
     }
 
     private String adminTokenOf(User user) {
