@@ -16,6 +16,7 @@ import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.domain.user.service.UserTierService;
 import com.example.cortebe.global.error.exception.InvalidInputException;
 import com.example.cortebe.global.security.exception.UnauthorizedException;
 import com.example.cortebe.domain.github.event.ProblemSolvedEvent;
@@ -49,6 +50,7 @@ public class JobStore {
     private final ProblemRepository problems;
     private final UserRepository users;
     private final ObjectMapper mapper;
+    private final UserTierService userTierService;
     private final ApplicationEventPublisher events;
 
     public record Case(String input, String expectedOutput) { }
@@ -106,9 +108,12 @@ public class JobStore {
             .map(value -> new Case(value.getInput(), value.getExpectedOutput())).toList();
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void finish(Long id, Verdict verdict, int passed, long runtime, String message) {
         int updated = jobs.finish(id, Verdict.RUNNING, verdict, passed, runtime, message, LocalDateTime.now());
+        if (updated == 1 && verdict == Verdict.ACCEPTED) {
+            userTierService.award(find(id));
+        }
         snapshots.deleteAllByJobId(id);
         if (updated == 1 && verdict == Verdict.ACCEPTED) publishSolved(id);
     }
