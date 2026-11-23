@@ -9,10 +9,12 @@ import com.example.cortebe.domain.user.dto.LinkGithubRequest;
 import com.example.cortebe.domain.user.dto.ThemeResponse;
 import com.example.cortebe.domain.user.dto.UpdateThemeRequest;
 import com.example.cortebe.domain.user.dto.UserStatsResponse;
+import com.example.cortebe.domain.user.dto.UserTierResponse;
 import com.example.cortebe.domain.user.service.GithubLinkService;
 import com.example.cortebe.domain.user.service.GrassService;
 import com.example.cortebe.domain.user.service.ThemeService;
 import com.example.cortebe.domain.user.service.UserStatsService;
+import com.example.cortebe.domain.user.service.UserTierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,7 +37,13 @@ public class UserController {
     private final UserStatsService userStatsService;
     private final ReviewRequestService reviewRequestService;
     private final ThemeService themeService;
+    private final UserTierService userTierService;
     private final GithubLinkService githubLinkService;
+
+    @GetMapping("/me/tier")
+    public UserTierResponse getMyTier(@AuthenticationPrincipal Long userId) {
+        return userTierService.get(userId);
+    }
 
     @GetMapping("/me/review-requests")
     public MyReviewRequestPageResponse getMyReviewRequests(

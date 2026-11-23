@@ -37,6 +37,38 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class UserControllerTests {
 
+    @Test
+    void 내_티어는_점수와_다음_단계를_반환한다() throws Exception {
+        // given
+        User me = userRepository.save(new User("tier@corte.com", "password", "me"));
+        String token = "Bearer " + jwtProvider.createAccessToken(me.getId());
+        // when & then
+        mockMvc.perform(get("/api/users/me/tier").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.score").value(0))
+            .andExpect(jsonPath("$.tier").value("BRONZE_3"))
+            .andExpect(jsonPath("$.nextTier").value("BRONZE_2"))
+            .andExpect(jsonPath("$.pointsToNextTier").value(30));
+    }
+
+    @Test
+    void 티어는_인증_없이_조회할_수_없다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/users/me/tier"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("A001"));
+    }
+
+    @Test
+    void 삭제된_회원_토큰으로_티어를_조회하면_인증_오류다() throws Exception {
+        // given
+        String token = "Bearer " + jwtProvider.createAccessToken(Long.MAX_VALUE);
+        // when & then
+        mockMvc.perform(get("/api/users/me/tier").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("A001"));
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
