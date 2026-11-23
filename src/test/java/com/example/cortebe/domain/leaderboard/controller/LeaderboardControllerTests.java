@@ -50,8 +50,7 @@ class LeaderboardControllerTests {
     @BeforeEach
     void setUp() {
         solver = saveUser("solver");
-        Problem problem = problemRepository.save(Problem.builder().title("두 수의 합").description("설명")
-            .category("구현").timeLimitMs(1000).memoryLimitMb(256).difficulty(Difficulty.SILVER_5).build());
+        Problem problem = saveProblem(Difficulty.SILVER_5);
         saveJob(problem, solver, Verdict.ACCEPTED);
         saveJob(problem, solver, Verdict.WRONG_ANSWER);
     }
@@ -87,15 +86,43 @@ class LeaderboardControllerTests {
     }
 
     @Test
-    void 검색_필터_정렬_파라미터를_받는다() throws Exception {
+    void 검색_필터_정렬_페이지_파라미터를_받는다() throws Exception {
+        // given: zeta는 2문제(721XP, SILVER_5), solver는 1문제(7XP, BRONZE_5)
+        User zeta = saveUser("zeta");
+        saveJob(saveProblem(Difficulty.DIAMOND_1), zeta, Verdict.ACCEPTED);
+        saveJob(saveProblem(Difficulty.BRONZE_5), zeta, Verdict.ACCEPTED);
+
         // when & then
+        mockMvc.perform(get("/api/leaderboard").param("keyword", "SOL"))
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].nickname").value("solver"));
+        mockMvc.perform(get("/api/leaderboard").param("minTier", "SILVER_5").param("maxTier", "MASTER"))
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].nickname").value("zeta"));
+        mockMvc.perform(get("/api/leaderboard").param("maxTier", "BRONZE_5"))
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].nickname").value("solver"));
+        mockMvc.perform(get("/api/leaderboard").param("minSolved", "2").param("maxSolved", "2"))
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].nickname").value("zeta"));
         mockMvc.perform(get("/api/leaderboard")
-                .param("keyword", "SOL").param("minTier", "BRONZE_5").param("maxTier", "MASTER")
-                .param("minSolved", "1").param("maxSolved", "1")
-                .param("sort", "XP").param("direction", "ASC").param("page", "0").param("size", "10"))
+                .param("sort", "XP").param("direction", "ASC").param("page", "1").param("size", "1"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content.length()").value(1))
-            .andExpect(jsonPath("$.size").value(10));
+            .andExpect(jsonPath("$.content[0].nickname").value("zeta"))
+            .andExpect(jsonPath("$.content[0].rank").value(1))
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+    @Test
+    void 없는_정렬_방향_이름이면_400_C001을_반환한다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/leaderboard").param("direction", "UP"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("C001"));
     }
 
     @Test
@@ -134,6 +161,11 @@ class LeaderboardControllerTests {
         JudgeJob job = jobRepository.save(JudgeJob.builder().problem(problem).author(author).submission(true)
             .language(Language.PYTHON).code("print(1)").snapshot("").tokenHash("hash").totalCount(1).build());
         jobRepository.finish(job.getId(), Verdict.QUEUED, verdict, 1, 10, "", LocalDateTime.now());
+    }
+
+    private Problem saveProblem(Difficulty difficulty) {
+        return problemRepository.save(Problem.builder().title("두 수의 합").description("설명")
+            .category("구현").timeLimitMs(1000).memoryLimitMb(256).difficulty(difficulty).build());
     }
 
     private User saveUser(String nickname) {

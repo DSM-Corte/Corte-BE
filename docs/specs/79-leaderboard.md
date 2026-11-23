@@ -56,7 +56,9 @@
 - 가정: 관리자 여부는 DB에 없어(`ADMIN_EMAILS`로만 판단) 관리자도 일반 회원처럼 순위에 들어간다
 - 범위 밖: 난이도 투표·리뷰 채택·문제 제작 XP, XP 저장 컬럼, 다른 사용자 프로필 API, 프론트 연결,
   문제 난이도 enum을 rank.md(Emerald·Master)에 맞추는 일
-- 새 컨벤션: 없음
+- 새 컨벤션(`src/main/AGENTS.md`에 반영)
+  - 경로는 하나뿐인 순위표라 단수 `/api/leaderboard`를 쓴다(복수형 규칙의 예외)
+  - 목록 정렬은 `id` 내림차순이 아니라 위 순위 규칙을 따르고, 목록 항목 record 이름은 `Summary` 대신 `Entry`다
 
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
@@ -64,7 +66,7 @@
 | 집계 대상 제출(회원 제출, 주어진 판정만, 비회원·직접 실행 제외) | `JudgeJobRepositoryTests#리더보드용_조회는_모든_회원의_제출_중_주어진_판정만_회원과_문제_정보와_함께_가져온다` | 컴파일 실패: `findLeaderboardRows`·`LeaderboardRow` 없음 |
 | 채점 완료 7종 판정으로 조회, 결과 없으면 빈 페이지(totalPages 0) | `LeaderboardServiceTests#채점이_끝난_7가지_판정만_조회한다` | 컴파일 실패: `LeaderboardService` 없음 |
 | XP(서로 다른 정답 문제마다 한 번, 오답 제외, Ruby 900, Unrated 0), solvedCount | `LeaderboardServiceTests#XP는_서로_다른_정답_문제마다_난이도_XP를_한_번씩_더한다` | 위와 같음 |
-| 난이도별 XP 표 | `LeaderboardServiceTests#난이도별_XP는_rank_md_표를_따른다` | 위와 같음 |
+| 난이도별 XP 표(31개 전부) | `LeaderboardServiceTests#난이도별_XP는_rank_md_표를_따른다` | 위와 같음 |
 | 티어(누적 XP 이상인 가장 높은 단계, 경계값), 31단계 | `UserTierTests#누적_XP_이상인_가장_높은_단계를_고른다`, `UserTierTests#단계는_브론즈_5부터_마스터까지_31개다` | 컴파일 실패: `UserTier` 없음 |
 | 순위표 대상(정답 1개 이상) | `LeaderboardServiceTests#정답_문제가_없는_회원은_순위표에_넣지_않는다` | 컴파일 실패: `LeaderboardService` 없음 |
 | submissionCount, accuracy | `LeaderboardServiceTests#제출_수와_정답률은_채점이_끝난_제출_기준으로_센다` | 위와 같음 |
@@ -84,5 +86,7 @@
 | 오류: minTier가 maxTier보다 높음 | `LeaderboardServiceTests#최소_티어가_최대_티어보다_높으면_조회에_실패한다` | 위와 같음 |
 | 오류: 없는 정렬·티어 이름, 정수가 아닌 숫자 | `LeaderboardControllerTests#없는_정렬_이름이면_400_C001을_반환한다`, `#없는_티어_이름이면_400_C001을_반환한다`, `#정수가_아닌_정답_수면_400_C001을_반환한다` | `expected 400 but was 401`(공개 경로·엔드포인트 없음) |
 | API 200 응답 필드, 토큰 없이 공개 조회 | `LeaderboardControllerTests#토큰_없이도_리더보드를_조회한다` | `expected 200 but was 401` |
-| 쿼리 파라미터 바인딩(keyword, tier, solved, sort, direction, page, size) | `LeaderboardControllerTests#검색_필터_정렬_파라미터를_받는다` | `expected 200 but was 401` |
+| 쿼리 파라미터 바인딩(keyword, tier, solved, sort, direction, page, size) | `LeaderboardControllerTests#검색_필터_정렬_페이지_파라미터를_받는다` | `expected 200 but was 401`(첫 작성 때). 리뷰 지적으로 회원 2명 데이터로 보강 |
+| 정렬 기준마다 그 값으로 정렬(XP·SOLVED·ACCURACY·STREAK) | `LeaderboardServiceTests#정렬_기준마다_그_값으로_정렬한다` | 구현 뒤 리뷰 지적으로 추가해 구현 전 레드는 없다. 변형 검사: `sortValue`의 SOLVED·STREAK를 `rank()`로 바꾸면 `expected [1, 2, 3] but was [3, 1, 2]`로 실패 |
+| 오류: 없는 방향 이름 | `LeaderboardControllerTests#없는_정렬_방향_이름이면_400_C001을_반환한다` | 구현 뒤 리뷰 지적으로 추가. 공개 경로 설정 전이면 401이므로 같은 레드(`expected 400 but was 401`)에 해당 |
 | 트랜잭션·동시성 | 해당 없음: 읽기 전용 조회만 한다 | 해당 없음 |

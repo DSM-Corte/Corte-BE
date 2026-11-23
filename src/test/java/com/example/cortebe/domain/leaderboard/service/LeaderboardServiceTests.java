@@ -21,8 +21,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -77,25 +79,27 @@ class LeaderboardServiceTests {
         Entry entry = leaderboardService.list(null, search().build()).content().getFirst();
 
         // then
-        assertThat(entry.xp()).isEqualTo(1 + 10 + 36 + 45 + 720 + 900 + 900);
+        assertThat(entry.xp()).isEqualTo(2612); // 1 + 10 + 36 + 45 + 720 + 900 + 900
         assertThat(entry.solvedCount()).isEqualTo(8);
-        assertThat(entry.tier()).isEqualTo(UserTier.from(entry.xp()));
+        assertThat(entry.tier()).isEqualTo(UserTier.GOLD_5); // Gold 5 기준 2400 이상, Gold 4 기준 3100 미만
     }
 
     @Test
     void 난이도별_XP는_rank_md_표를_따른다() {
+        // given
+        Map<Difficulty, Long> expected = new EnumMap<>(Difficulty.class);
+        long[] values = {1, 2, 3, 4, 5, 7, 8, 10, 12, 14, 18, 22, 26, 31, 36, 45, 55, 67, 80, 95,
+            310, 380, 470, 580, 720, 900, 900, 900, 900, 900, 0};
+        Difficulty[] difficulties = Difficulty.values(); // BRONZE_5 … DIAMOND_1, RUBY_5 … RUBY_1, UNRATED
+        for (int i = 0; i < difficulties.length; i++) {
+            expected.put(difficulties[i], values[i]);
+        }
+
         // when & then
-        assertThat(LeaderboardService.xpOf(Difficulty.BRONZE_5)).isEqualTo(1);
-        assertThat(LeaderboardService.xpOf(Difficulty.BRONZE_1)).isEqualTo(5);
-        assertThat(LeaderboardService.xpOf(Difficulty.SILVER_5)).isEqualTo(7);
-        assertThat(LeaderboardService.xpOf(Difficulty.SILVER_1)).isEqualTo(14);
-        assertThat(LeaderboardService.xpOf(Difficulty.GOLD_5)).isEqualTo(18);
-        assertThat(LeaderboardService.xpOf(Difficulty.GOLD_2)).isEqualTo(31);
-        assertThat(LeaderboardService.xpOf(Difficulty.PLATINUM_1)).isEqualTo(95);
-        assertThat(LeaderboardService.xpOf(Difficulty.DIAMOND_5)).isEqualTo(310);
-        assertThat(LeaderboardService.xpOf(Difficulty.DIAMOND_2)).isEqualTo(580);
-        assertThat(LeaderboardService.xpOf(Difficulty.RUBY_3)).isEqualTo(900);
-        assertThat(LeaderboardService.xpOf(Difficulty.UNRATED)).isZero();
+        assertThat(difficulties).hasSize(values.length);
+        for (Difficulty difficulty : difficulties) {
+            assertThat(LeaderboardService.xpOf(difficulty)).as(difficulty.name()).isEqualTo(expected.get(difficulty));
+        }
     }
 
     @Test
@@ -234,7 +238,7 @@ class LeaderboardServiceTests {
     void 티어와_정답_수_범위는_양_끝을_포함한다() {
         // given
         List<LeaderboardRow> rows = new ArrayList<>();
-        rows.add(accepted(1L, "브론즈4", 10L, Difficulty.GOLD_5, 0));     // 18XP → BRONZE_5
+        rows.add(accepted(1L, "브론즈5", 10L, Difficulty.GOLD_5, 0));     // 18XP → BRONZE_5
         for (long problemId = 20; problemId < 23; problemId++) {
             rows.add(accepted(2L, "브론즈4", problemId, Difficulty.GOLD_4, 0)); // 66XP, 3문제 → BRONZE_4
         }
@@ -277,6 +281,43 @@ class LeaderboardServiceTests {
         assertThat(byAccuracy.content()).extracting(Entry::userId).containsExactly(1L, 2L);
         assertThat(byXpAsc.content()).extracting(Entry::userId).containsExactly(2L, 1L);
         assertThat(byRankDesc.content()).extracting(Entry::userId).containsExactly(2L, 1L);
+    }
+
+    @Test
+    void 정렬_기준마다_그_값으로_정렬한다() {
+        // given: 기준마다 순위와 다른 순서가 나오도록 만든다
+        rows(
+            // 1번: 3XP, 3문제, 정답률 100, 연속 1일
+            accepted(1L, "가", 20L, Difficulty.BRONZE_5, 0),
+            accepted(1L, "가", 21L, Difficulty.BRONZE_5, 0),
+            accepted(1L, "가", 22L, Difficulty.BRONZE_5, 0),
+            // 2번: 7XP, 1문제, 정답률 50, 연속 3일
+            accepted(2L, "나", 10L, Difficulty.SILVER_5, 0),
+            accepted(2L, "나", 10L, Difficulty.SILVER_5, 1),
+            accepted(2L, "나", 10L, Difficulty.SILVER_5, 2),
+            wrong(2L, "나", 10L, Difficulty.SILVER_5, 0),
+            wrong(2L, "나", 10L, Difficulty.SILVER_5, 0),
+            wrong(2L, "나", 10L, Difficulty.SILVER_5, 0),
+            // 3번: 2XP, 1문제, 정답률 100, 연속 2일
+            accepted(3L, "다", 30L, Difficulty.BRONZE_4, 0),
+            accepted(3L, "다", 30L, Difficulty.BRONZE_4, 1)
+        );
+
+        // when
+        LeaderboardPageResponse byRank = leaderboardService.list(null, search().build());
+        LeaderboardPageResponse byXpAsc = leaderboardService.list(null,
+            search().sort(LeaderboardSort.XP).direction(Sort.Direction.ASC).build());
+        LeaderboardPageResponse bySolved = leaderboardService.list(null, search().sort(LeaderboardSort.SOLVED).build());
+        LeaderboardPageResponse byAccuracy = leaderboardService.list(null,
+            search().sort(LeaderboardSort.ACCURACY).build());
+        LeaderboardPageResponse byStreak = leaderboardService.list(null, search().sort(LeaderboardSort.STREAK).build());
+
+        // then
+        assertThat(byRank.content()).extracting(Entry::userId).containsExactly(2L, 1L, 3L);
+        assertThat(byXpAsc.content()).extracting(Entry::userId).containsExactly(3L, 1L, 2L);
+        assertThat(bySolved.content()).extracting(Entry::userId).containsExactly(1L, 2L, 3L);
+        assertThat(byAccuracy.content()).extracting(Entry::userId).containsExactly(1L, 3L, 2L);
+        assertThat(byStreak.content()).extracting(Entry::userId).containsExactly(2L, 3L, 1L);
     }
 
     @Test
