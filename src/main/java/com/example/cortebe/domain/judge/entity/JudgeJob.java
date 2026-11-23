@@ -51,9 +51,9 @@ public class JudgeJob {
     private Language language;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
     private Verdict verdict;
-    @Lob @Column(nullable = false)
+    @Lob @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String code;
-    @Lob @Column(nullable = false)
+    @Lob @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String snapshot;
     @Column(nullable = false, length = 64)
     private String tokenHash;

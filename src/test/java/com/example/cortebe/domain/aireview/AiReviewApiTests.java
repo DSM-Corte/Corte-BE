@@ -1,13 +1,9 @@
 package com.example.cortebe.domain.aireview;
 
-import com.example.cortebe.domain.aireview.client.GeminiClient;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.Candidate;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.Content;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.GenerateContentResponse;
-import com.example.cortebe.domain.aireview.client.dto.GeminiDto.Part;
+import com.example.cortebe.domain.aireview.client.ClaudeClient;
 import com.example.cortebe.domain.aireview.exception.DuplicateAiReviewException;
 import com.example.cortebe.domain.aireview.service.AiReviewStore;
-import com.example.cortebe.domain.aireview.service.GeminiReviewer;
+import com.example.cortebe.domain.aireview.service.ClaudeReviewer;
 import com.example.cortebe.domain.aireview.dto.AiReviewResponse.Comment;
 import com.example.cortebe.domain.aireview.dto.AiReviewResponse.Suggestion;
 import com.example.cortebe.domain.judge.entity.JudgeJob;
@@ -42,10 +38,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@TestPropertySource(properties = {"gemini.api-key=test-key", "gemini.model=test-model"})
+@TestPropertySource(properties = {"claude.api-key=test-key", "claude.model=test-model"})
 class AiReviewApiTests {
 
-    private static final String GEMINI_JSON = """
+    private static final String CLAUDE_JSON = """
         {"summary":"요약","comments":[{"line":1,"body":"코멘트"}],
          "suggestion":{"title":"제안","description":"설명","code":"print(4)"}}""";
 
@@ -55,14 +51,14 @@ class AiReviewApiTests {
     @Autowired UserRepository users;
     @Autowired JwtProvider jwtProvider;
     @Autowired AiReviewStore store;
-    @MockitoBean GeminiClient geminiClient;
+    @MockitoBean ClaudeClient claudeClient;
 
     @Test
     void 본인_제출에_AI_리뷰를_생성하고_조회한다() throws Exception {
         // given
         User me = saveUser("me");
         JudgeJob job = saveJob(me, true);
-        givenGeminiReturns(GEMINI_JSON);
+        givenClaudeReturns(CLAUDE_JSON);
 
         // when & then
         mvc.perform(post("/api/submissions/" + job.getId() + "/ai-review").header(HttpHeaders.AUTHORIZATION, bearer(me)))
@@ -86,7 +82,7 @@ class AiReviewApiTests {
         // given
         User me = saveUser("me");
         JudgeJob job = saveJob(me, true);
-        givenGeminiReturns(GEMINI_JSON);
+        givenClaudeReturns(CLAUDE_JSON);
         mvc.perform(post("/api/submissions/" + job.getId() + "/ai-review").header(HttpHeaders.AUTHORIZATION, bearer(me)))
             .andExpect(status().isCreated());
 
@@ -101,7 +97,7 @@ class AiReviewApiTests {
         // given
         User me = saveUser("me");
         JudgeJob job = saveJob(me, true);
-        GeminiReviewer.Result result = new GeminiReviewer.Result("test-model", "요약",
+        ClaudeReviewer.Result result = new ClaudeReviewer.Result("test-model", "요약",
             List.of(new Comment(1, "c")), new Suggestion("t", "d", "code"));
         store.save(me.getId(), job.getId(), result);
 
@@ -154,11 +150,11 @@ class AiReviewApiTests {
     }
 
     @Test
-    void Gemini_응답을_해석할_수_없으면_502_I005를_반환한다() throws Exception {
+    void Claude_응답을_해석할_수_없으면_502_I005를_반환한다() throws Exception {
         // given
         User me = saveUser("me");
         JudgeJob job = saveJob(me, true);
-        givenGeminiReturns("JSON 아님");
+        givenClaudeReturns("JSON 아님");
 
         // when & then
         mvc.perform(post("/api/submissions/" + job.getId() + "/ai-review").header(HttpHeaders.AUTHORIZATION, bearer(me)))
@@ -177,9 +173,8 @@ class AiReviewApiTests {
             .andExpect(jsonPath("$.code").value("A001"));
     }
 
-    private void givenGeminiReturns(String text) {
-        given(geminiClient.generateContent(any(), any(), any())).willReturn(
-            new GenerateContentResponse(List.of(new Candidate(new Content("model", List.of(new Part(text)))))));
+    private void givenClaudeReturns(String text) {
+        given(claudeClient.complete(any(), any(), any())).willReturn(text);
     }
 
     private JudgeJob saveJob(User author, boolean submission) {
