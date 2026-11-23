@@ -308,9 +308,11 @@ class ProblemControllerTests {
             .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."));
         mockMvc.perform(patch(location).header(HttpHeaders.AUTHORIZATION, token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Changed\"}"))
-            .andExpect(status().isForbidden());
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("A004"));
         mockMvc.perform(delete(location).header(HttpHeaders.AUTHORIZATION, token))
-            .andExpect(status().isForbidden());
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("A004"));
 
         mockMvc.perform(get(location))
             .andExpect(status().isOk())

@@ -23,6 +23,7 @@
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
 | 일반 회원의 관리자 API → 403 JSON `{status, code: A004, message}` | `ProblemControllerTests#일반_사용자는_조회할_수_있지만_생성_수정_삭제할_수_없다`(단언 추가), `UserControllerTests#관리자가_아니면_GitHub_연동_정보를_저장할_수_없다`(단언 추가) | `No value at JSON path "$.status"` / `"$.code"`(본문이 JSON이 아님) |
+| 문제 수정·삭제와 문제집 쓰기의 403도 A004(리뷰 보강) | `ProblemControllerTests#일반_사용자는_조회할_수_있지만_생성_수정_삭제할_수_없다`, `WorkbookControllerTests`의 권한 매개변수 테스트(단언 추가) | 구현 뒤 보강. 처리기 없이 돌리면 본문이 JSON이 아니어서 `No value at JSON path "$.code"`로 실패하는 같은 레드에 해당 |
 | 관리자는 저장한 연동 정보를 조회 | `UserControllerTests#관리자는_저장한_GitHub_연동_정보를_조회한다` | `expected 200 but was 405`(엔드포인트 없음) |
 | 연동 전이면 세 값 모두 null | `UserControllerTests#연동하지_않았으면_GitHub_연동_정보가_모두_null이다` | `expected 200 but was 405` |
 | 일반 회원의 연동 정보 조회 → 403 A004 | `UserControllerTests#관리자가_아니면_GitHub_연동_정보를_조회할_수_없다` | `expected 403 but was 405` |

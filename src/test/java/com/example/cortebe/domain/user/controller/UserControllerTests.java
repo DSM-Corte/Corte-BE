@@ -344,7 +344,9 @@ class UserControllerTests {
                     {"installationId": 1, "owner": "a", "repo": "b"}
                     """))
             .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.code").value("A004"));
+            .andExpect(jsonPath("$.status").value(403))
+            .andExpect(jsonPath("$.code").value("A004"))
+            .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."));
 
         // then
         entityManager.flush();

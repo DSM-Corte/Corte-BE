@@ -41,8 +41,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/problems", "/api/problems/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/problems", "/api/problems/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/problems", "/api/problems/**").hasRole("ADMIN")
-                // 다른 계정의 설치 ID를 저장해 그 레포에 쓰는 것을 막으려고 관리자만 허용한다
+                // 연동 정보는 관리자만 쓰는 기능이라 조회도 저장과 같은 권한으로 막는다
                 .requestMatchers(HttpMethod.GET, "/api/users/me/github").hasRole("ADMIN")
+                // 다른 계정의 설치 ID를 저장해 그 레포에 쓰는 것을 막으려고 관리자만 허용한다
                 .requestMatchers(HttpMethod.PUT, "/api/users/me/github").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .exceptionHandling(exception -> exception
