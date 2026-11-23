@@ -64,8 +64,8 @@ class LeaderboardControllerTests {
             .andExpect(jsonPath("$.content[0].rank").value(1))
             .andExpect(jsonPath("$.content[0].userId").value(solver.getId()))
             .andExpect(jsonPath("$.content[0].nickname").value("solver"))
-            .andExpect(jsonPath("$.content[0].tier").value("BRONZE_5"))
-            .andExpect(jsonPath("$.content[0].xp").value(7))
+            .andExpect(jsonPath("$.content[0].tier").value("BRONZE_3"))
+            .andExpect(jsonPath("$.content[0].score").value(20))
             .andExpect(jsonPath("$.content[0].solvedCount").value(1))
             .andExpect(jsonPath("$.content[0].submissionCount").value(2))
             .andExpect(jsonPath("$.content[0].accuracy").value(50.0))
@@ -87,7 +87,7 @@ class LeaderboardControllerTests {
 
     @Test
     void 검색_필터_정렬_페이지_파라미터를_받는다() throws Exception {
-        // given: zeta는 2문제(721XP, SILVER_5), solver는 1문제(7XP, BRONZE_5)
+        // given: zeta는 2문제(60점, BRONZE_1), solver는 1문제(20점, BRONZE_3)
         User zeta = saveUser("zeta");
         saveJob(saveProblem(Difficulty.DIAMOND_1), zeta, Verdict.ACCEPTED);
         saveJob(saveProblem(Difficulty.BRONZE_5), zeta, Verdict.ACCEPTED);
@@ -96,17 +96,17 @@ class LeaderboardControllerTests {
         mockMvc.perform(get("/api/leaderboard").param("keyword", "SOL"))
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].nickname").value("solver"));
-        mockMvc.perform(get("/api/leaderboard").param("minTier", "SILVER_5").param("maxTier", "MASTER"))
+        mockMvc.perform(get("/api/leaderboard").param("minTier", "BRONZE_1").param("maxTier", "DIAMOND_1"))
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].nickname").value("zeta"));
-        mockMvc.perform(get("/api/leaderboard").param("maxTier", "BRONZE_5"))
+        mockMvc.perform(get("/api/leaderboard").param("maxTier", "BRONZE_3"))
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].nickname").value("solver"));
         mockMvc.perform(get("/api/leaderboard").param("minSolved", "2").param("maxSolved", "2"))
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].nickname").value("zeta"));
         mockMvc.perform(get("/api/leaderboard")
-                .param("sort", "XP").param("direction", "ASC").param("page", "1").param("size", "1"))
+                .param("sort", "SCORE").param("direction", "ASC").param("page", "1").param("size", "1"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].nickname").value("zeta"))

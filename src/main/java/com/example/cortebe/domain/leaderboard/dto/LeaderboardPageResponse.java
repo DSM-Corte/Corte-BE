@@ -1,6 +1,6 @@
 package com.example.cortebe.domain.leaderboard.dto;
 
-import com.example.cortebe.domain.leaderboard.entity.UserTier;
+import com.example.cortebe.domain.user.entity.UserTier;
 import lombok.Builder;
 
 import java.util.List;
@@ -18,7 +18,7 @@ public record LeaderboardPageResponse(
         Long userId,
         String nickname,
         UserTier tier,
-        long xp,
+        long score,
         long solvedCount,
         long submissionCount,
         double accuracy,

@@ -1,6 +1,6 @@
 package com.example.cortebe.domain.leaderboard.dto;
 
-import com.example.cortebe.domain.leaderboard.entity.UserTier;
+import com.example.cortebe.domain.user.entity.UserTier;
 import lombok.Builder;
 import org.springframework.data.domain.Sort;
 

@@ -7,8 +7,11 @@ import com.example.cortebe.domain.leaderboard.dto.LeaderboardPageResponse;
 import com.example.cortebe.domain.leaderboard.dto.LeaderboardPageResponse.Entry;
 import com.example.cortebe.domain.leaderboard.dto.LeaderboardSearch;
 import com.example.cortebe.domain.leaderboard.dto.LeaderboardSort;
-import com.example.cortebe.domain.leaderboard.entity.UserTier;
 import com.example.cortebe.domain.problem.entity.Difficulty;
+import com.example.cortebe.domain.user.entity.UserTier;
+import com.example.cortebe.domain.user.repository.ProblemRewardRepository;
+import com.example.cortebe.domain.user.repository.ProblemRewardRepository.RewardRow;
+import com.example.cortebe.domain.user.service.UserTierService;
 import com.example.cortebe.global.error.exception.InvalidInputException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -42,6 +45,7 @@ public class LeaderboardService {
         Verdict.COMPILE_ERROR, Verdict.RUNTIME_ERROR, Verdict.TIME_LIMIT, Verdict.MEMORY_LIMIT, Verdict.OUTPUT_LIMIT);
 
     private final JudgeJobRepository judgeJobRepository;
+    private final ProblemRewardRepository problemRewardRepository;
 
     public LeaderboardPageResponse list(Long viewerId, LeaderboardSearch search) {
         validate(search);
@@ -53,7 +57,15 @@ public class LeaderboardService {
             player.add(row);
         }
 
-        // 2. 정답 문제가 있는 회원만 순위표 항목으로 만든다
+        // 2. 이미 지급된 점수 기록을 회원에게 붙인다(#74의 problem_rewards)
+        for (RewardRow reward : problemRewardRepository.findAllRewardRows()) {
+            Player player = players.get(reward.getUserId());
+            if (player != null) {
+                player.rewards.put(reward.getProblemId(), reward.getPoints());
+            }
+        }
+
+        // 3. 정답 문제가 있는 회원만 순위표 항목으로 만든다
         LocalDate today = LocalDate.now(KOREA);
         List<Entry> ranked = new ArrayList<>();
         for (Player player : players.values()) {
@@ -62,8 +74,8 @@ public class LeaderboardService {
             }
         }
 
-        // 3. XP → 정답 수 → 회원 ID 순으로 전체 순위를 매긴다
-        ranked.sort(Comparator.comparingLong(Entry::xp).reversed()
+        // 4. 점수 → 정답 수 → 회원 ID 순으로 전체 순위를 매긴다
+        ranked.sort(Comparator.comparingLong(Entry::score).reversed()
             .thenComparing(Comparator.comparingLong(Entry::solvedCount).reversed())
             .thenComparing(Entry::userId));
         List<Entry> withRank = new ArrayList<>();
@@ -71,7 +83,7 @@ public class LeaderboardService {
             withRank.add(withRank(ranked.get(i), i + 1));
         }
 
-        // 4. 검색·필터는 순위를 매긴 뒤에 걸어서 순위 번호가 전체 기준을 유지한다
+        // 5. 검색·필터는 순위를 매긴 뒤에 걸어서 순위 번호가 전체 기준을 유지한다
         List<Entry> filtered = new ArrayList<>();
         for (Entry entry : withRank) {
             if (matches(entry, search)) {
@@ -79,46 +91,13 @@ public class LeaderboardService {
             }
         }
 
-        // 5. 정렬하고 한 페이지만 잘라 준다
+        // 6. 정렬하고 한 페이지만 잘라 준다
         filtered.sort(comparator(search.sort(), search.direction()));
         int total = filtered.size();
         int from = (int) Math.min((long) search.page() * search.size(), total);
         int to = Math.min(from + search.size(), total);
         int totalPages = (total + search.size() - 1) / search.size();
         return new LeaderboardPageResponse(filtered.subList(from, to), search.page(), search.size(), total, totalPages);
-    }
-
-    // 문제 최초 정답 XP(rank.md 2절). 백엔드 난이도에 없는 Emerald 대신 Ruby는 Master 값, Unrated는 0
-    static long xpOf(Difficulty difficulty) {
-        return switch (difficulty) {
-            case BRONZE_5 -> 1;
-            case BRONZE_4 -> 2;
-            case BRONZE_3 -> 3;
-            case BRONZE_2 -> 4;
-            case BRONZE_1 -> 5;
-            case SILVER_5 -> 7;
-            case SILVER_4 -> 8;
-            case SILVER_3 -> 10;
-            case SILVER_2 -> 12;
-            case SILVER_1 -> 14;
-            case GOLD_5 -> 18;
-            case GOLD_4 -> 22;
-            case GOLD_3 -> 26;
-            case GOLD_2 -> 31;
-            case GOLD_1 -> 36;
-            case PLATINUM_5 -> 45;
-            case PLATINUM_4 -> 55;
-            case PLATINUM_3 -> 67;
-            case PLATINUM_2 -> 80;
-            case PLATINUM_1 -> 95;
-            case DIAMOND_5 -> 310;
-            case DIAMOND_4 -> 380;
-            case DIAMOND_3 -> 470;
-            case DIAMOND_2 -> 580;
-            case DIAMOND_1 -> 720;
-            case RUBY_5, RUBY_4, RUBY_3, RUBY_2, RUBY_1 -> 900;
-            case UNRATED -> 0;
-        };
     }
 
     private void validate(LeaderboardSearch search) {
@@ -176,7 +155,7 @@ public class LeaderboardService {
     private double sortValue(Entry entry, LeaderboardSort sort) {
         return switch (sort) {
             case RANK -> entry.rank();
-            case XP -> entry.xp();
+            case SCORE -> entry.score();
             case SOLVED -> entry.solvedCount();
             case ACCURACY -> entry.accuracy();
             case STREAK -> entry.streak();
@@ -189,7 +168,7 @@ public class LeaderboardService {
             .userId(entry.userId())
             .nickname(entry.nickname())
             .tier(entry.tier())
-            .xp(entry.xp())
+            .score(entry.score())
             .solvedCount(entry.solvedCount())
             .submissionCount(entry.submissionCount())
             .accuracy(entry.accuracy())
@@ -204,6 +183,8 @@ public class LeaderboardService {
         private final String nickname;
         private final Map<Long, Difficulty> solvedProblems = new HashMap<>();
         private final Set<LocalDate> solvedDates = new HashSet<>();
+        // 문제 ID → 이미 지급된 점수
+        private final Map<Long, Long> rewards = new HashMap<>();
         private long submissions;
         private long accepted;
 
@@ -222,15 +203,22 @@ public class LeaderboardService {
         }
 
         Entry toEntry(LocalDate today, Long viewerId) {
-            long xp = 0;
-            for (Difficulty difficulty : solvedProblems.values()) {
-                xp += xpOf(difficulty);
+            // GET /api/users/me/tier의 score와 같은 값:
+            // 지급 기록 합계 + 아직 기록이 없는 정답 문제의 현재 난이도 점수
+            long score = 0;
+            for (long points : rewards.values()) {
+                score += points;
+            }
+            for (Long problemId : solvedProblems.keySet()) {
+                if (!rewards.containsKey(problemId)) {
+                    score += UserTierService.points(solvedProblems.get(problemId));
+                }
             }
             return Entry.builder()
                 .userId(userId)
                 .nickname(nickname)
-                .tier(UserTier.from(xp))
-                .xp(xp)
+                .tier(UserTier.fromScore(score))
+                .score(score)
                 .solvedCount(solvedProblems.size())
                 .submissionCount(submissions)
                 .accuracy(Math.round(accepted * 1000.0 / submissions) / 10.0)

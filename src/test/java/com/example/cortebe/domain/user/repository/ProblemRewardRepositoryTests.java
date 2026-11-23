@@ -11,8 +11,11 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.groups.Tuple.tuple;
 
 @DataJpaTest
 @Import(JpaAuditingConfig.class)
@@ -33,5 +36,24 @@ class ProblemRewardRepositoryTests {
         assertThat(rewards.sumPoints(user.getId())).isEqualTo(10);
         assertThatThrownBy(() -> rewards.saveAndFlush(ProblemReward.builder()
             .user(user).problem(problem).points(10L).build())).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void 리더보드용_조회는_모든_회원의_지급_기록을_회원_문제_점수만_가져온다() {
+        // given
+        User me = users.saveAndFlush(User.builder().email("me@tier.test").password("password").nickname("me").build());
+        User other = users.saveAndFlush(User.builder().email("other@tier.test").password("password").nickname("other").build());
+        Problem problem = problems.saveAndFlush(Problem.builder().title("합").description("더하기").category("구현")
+            .memoryLimitMb(256).timeLimitMs(1000).build());
+        rewards.saveAndFlush(ProblemReward.builder().user(me).problem(problem).points(20L).build());
+        rewards.saveAndFlush(ProblemReward.builder().user(other).problem(problem).points(30L).build());
+
+        // when
+        List<ProblemRewardRepository.RewardRow> rows = rewards.findAllRewardRows();
+
+        // then
+        assertThat(rows).extracting(ProblemRewardRepository.RewardRow::getUserId,
+                ProblemRewardRepository.RewardRow::getProblemId, ProblemRewardRepository.RewardRow::getPoints)
+            .containsExactlyInAnyOrder(tuple(me.getId(), problem.getId(), 20L), tuple(other.getId(), problem.getId(), 30L));
     }
 }
