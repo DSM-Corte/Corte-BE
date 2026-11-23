@@ -22,6 +22,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 @DataJpaTest
 @Import(JpaAuditingConfig.class)
@@ -166,6 +167,36 @@ class JudgeJobRepositoryTests {
         assertThat(row.getCategory()).isEqualTo("구현");
         assertThat(row.getDifficulty()).isEqualTo(Difficulty.UNRATED);
         assertThat(row.getLanguage()).isEqualTo(Language.PYTHON);
+    }
+
+    @Test
+    void 리더보드용_조회는_모든_회원의_제출_중_주어진_판정만_회원과_문제_정보와_함께_가져온다() {
+        // given
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+        User other = userRepository.save(new User("other@corte.com", "password", "other"));
+        Problem problem = problemRepository.save(newProblem());
+
+        saveJob(problem, me, true, Verdict.ACCEPTED);       // 나와야 한다
+        saveJob(problem, other, true, Verdict.WRONG_ANSWER); // 나와야 한다
+        saveJob(problem, me, true, Verdict.SYSTEM_ERROR);   // 주어진 판정이 아님
+        saveJob(problem, me, false, Verdict.ACCEPTED);      // 직접 실행
+        saveJob(problem, null, true, Verdict.ACCEPTED);     // 비회원 제출
+
+        // when
+        List<JudgeJobRepository.LeaderboardRow> result = jobRepository.findLeaderboardRows(
+            EnumSet.of(Verdict.ACCEPTED, Verdict.WRONG_ANSWER));
+
+        // then
+        assertThat(result).extracting(JudgeJobRepository.LeaderboardRow::getNickname,
+                JudgeJobRepository.LeaderboardRow::getVerdict)
+            .containsExactlyInAnyOrder(
+                tuple("me", Verdict.ACCEPTED),
+                tuple("other", Verdict.WRONG_ANSWER));
+        JudgeJobRepository.LeaderboardRow row = result.stream()
+            .filter(item -> item.getUserId().equals(me.getId())).findFirst().orElseThrow();
+        assertThat(row.getProblemId()).isEqualTo(problem.getId());
+        assertThat(row.getDifficulty()).isEqualTo(Difficulty.UNRATED);
+        assertThat(row.getCreatedAt()).isNotNull();
     }
 
     private Problem newProblem() {

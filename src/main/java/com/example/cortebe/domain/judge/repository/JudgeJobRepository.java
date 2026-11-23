@@ -113,4 +113,29 @@ public interface JudgeJobRepository extends JpaRepository<JudgeJob, Long> {
 
         Verdict getVerdict();
     }
+
+    // 리더보드용: 모든 회원의 제출 중 판정이 verdicts에 있는 것을 한 줄씩, 회원·문제 정보와 함께 짧은 컬럼만 가져온다
+    // 비회원 제출은 author가 없어 join에서 빠진다
+    @Query("""
+        select u.id as userId, u.nickname as nickname, p.id as problemId, p.difficulty as difficulty,
+               j.verdict as verdict, j.createdAt as createdAt
+        from JudgeJob j join j.author u join j.problem p
+        where j.submission = true
+          and j.verdict in :verdicts
+        """)
+    List<LeaderboardRow> findLeaderboardRows(Collection<Verdict> verdicts);
+
+    interface LeaderboardRow {
+        Long getUserId();
+
+        String getNickname();
+
+        Long getProblemId();
+
+        Difficulty getDifficulty();
+
+        Verdict getVerdict();
+
+        LocalDateTime getCreatedAt();
+    }
 }
