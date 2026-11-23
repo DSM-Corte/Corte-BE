@@ -163,6 +163,58 @@ class UserControllerTests {
     }
 
     @Test
+    void 다른_회원의_프로필을_토큰_없이_조회한다() throws Exception {
+        // given
+        User other = userRepository.save(new User("other@corte.com", "password", "other"));
+        Problem problem = problemRepository.save(Problem.builder()
+            .title("두 수의 합")
+            .description("두 수를 더한다")
+            .category("구현")
+            .memoryLimitMb(256)
+            .timeLimitMs(1000)
+            .build());
+        JudgeJob job = judgeJobRepository.save(JudgeJob.builder()
+            .problem(problem)
+            .author(other)
+            .submission(true)
+            .language(Language.PYTHON)
+            .code("print(1)")
+            .snapshot("")
+            .tokenHash("hash")
+            .totalCount(1)
+            .build());
+        judgeJobRepository.finish(job.getId(), Verdict.QUEUED, Verdict.ACCEPTED, 1, 10, "", LocalDateTime.now());
+
+        // when & then
+        mockMvc.perform(get("/api/users/{userId}/profile", other.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.userId").value(other.getId()))
+            .andExpect(jsonPath("$.nickname").value("other"))
+            .andExpect(jsonPath("$.email").doesNotExist())
+            .andExpect(jsonPath("$.stats.solvedCount").value(1))
+            .andExpect(jsonPath("$.stats.submissionCount").value(1))
+            .andExpect(jsonPath("$.stats.accuracy").value(100.0))
+            .andExpect(jsonPath("$.stats.languages[0].name").value("PYTHON"))
+            .andExpect(jsonPath("$.stats.difficulties.length()").value(31));
+    }
+
+    @Test
+    void 없는_회원의_프로필을_조회하면_404_U003을_준다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/users/{userId}/profile", 999999L))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("U003"));
+    }
+
+    @Test
+    void 회원_ID가_숫자가_아니면_프로필_조회에_400_C001을_준다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/users/abc/profile"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
     void 토큰_없이_통계를_조회하면_401을_준다() throws Exception {
         // when & then
         mockMvc.perform(get("/api/users/me/stats"))
