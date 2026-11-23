@@ -49,7 +49,7 @@ global/
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 채점 정답 확정 시 연동된 회원의 첫 정답에서 발행한다(연동 정보는 `PUT /api/users/me/github`(ADMIN 전용)로 저장한다) |
 | 테스트케이스·제출·채점 | 관리자 케이스 CRUD, 비회원 포함 실행·채점. 기존 Judge0 Provider 연결, 입력 사전 전달·HTTP 결과 조회. 상세 `docs/judge-api.md` |
-| 리더보드 | `GET /api/leaderboard` 공개 조회. 문제 최초 정답 XP로 조회 때마다 계산하고 검색·필터·정렬·페이지는 서버에서 한다. 상세 `docs/specs/79-leaderboard.md` |
+| 리더보드 | `GET /api/leaderboard` 공개 조회. 회원 티어(#74)와 같은 점수로 조회 때마다 계산하고 검색·필터·정렬·페이지는 서버에서 한다. 상세 `docs/specs/79-leaderboard.md` |
 | AI 리뷰 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
 
 ### 아키텍처
