@@ -20,6 +20,6 @@ public class UserProfileService {
         User user = userRepository.findById(userId)
             .orElseThrow(UserNotFoundException::new);
         // 통계는 내 통계와 같은 기준으로 계산한다
-        return new UserProfileResponse(user.getId(), user.getNickname(), userStatsService.getMyStats(userId));
+        return UserProfileResponse.from(user, userStatsService.getMyStats(userId));
     }
 }

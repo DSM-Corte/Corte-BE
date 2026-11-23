@@ -184,6 +184,19 @@ class UserControllerTests {
             .totalCount(1)
             .build());
         judgeJobRepository.finish(job.getId(), Verdict.QUEUED, Verdict.ACCEPTED, 1, 10, "", LocalDateTime.now());
+        // 다른 회원의 제출이 섞이지 않는지 보려고 내 오답 제출도 하나 둔다
+        User me = userRepository.save(new User("me@corte.com", "password", "me"));
+        JudgeJob mine = judgeJobRepository.save(JudgeJob.builder()
+            .problem(problem)
+            .author(me)
+            .submission(true)
+            .language(Language.JAVA)
+            .code("x")
+            .snapshot("")
+            .tokenHash("hash")
+            .totalCount(1)
+            .build());
+        judgeJobRepository.finish(mine.getId(), Verdict.QUEUED, Verdict.WRONG_ANSWER, 0, 10, "", LocalDateTime.now());
 
         // when & then
         mockMvc.perform(get("/api/users/{userId}/profile", other.getId()))
