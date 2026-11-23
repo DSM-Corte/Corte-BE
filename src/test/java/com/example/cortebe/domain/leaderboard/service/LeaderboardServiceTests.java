@@ -85,6 +85,33 @@ class LeaderboardServiceTests {
     }
 
     @Test
+    void 영점_지급_기록이_있으면_지금_난이도가_매겨져_있어도_영점이다() {
+        // given: 미지정일 때 맞혀 0점 기록이 남은 문제가 나중에 골드가 됐다(#74는 추가 지급하지 않는다)
+        rows(accepted(1L, "가", 10L, Difficulty.GOLD_1, 0));
+        rewards(reward(1L, 10L, 0L));
+
+        // when
+        Entry entry = leaderboardService.list(null, search().build()).content().getFirst();
+
+        // then
+        assertThat(entry.score()).isZero();
+        assertThat(entry.solvedCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 채점된_제출이_없는_회원의_지급_기록은_무시한다() {
+        // given
+        rows(accepted(1L, "가", 10L, Difficulty.BRONZE_5, 0));
+        rewards(reward(2L, 10L, 30L));
+
+        // when
+        LeaderboardPageResponse response = leaderboardService.list(null, search().build());
+
+        // then
+        assertThat(response.content()).extracting(Entry::userId).containsExactly(1L);
+    }
+
+    @Test
     void 다른_회원의_지급_기록은_섞지_않는다() {
         // given
         rows(

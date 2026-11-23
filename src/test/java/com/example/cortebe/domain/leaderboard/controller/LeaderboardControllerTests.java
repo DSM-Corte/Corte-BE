@@ -7,7 +7,9 @@ import com.example.cortebe.domain.judge.runner.Verdict;
 import com.example.cortebe.domain.problem.entity.Difficulty;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
+import com.example.cortebe.domain.user.entity.ProblemReward;
 import com.example.cortebe.domain.user.entity.User;
+import com.example.cortebe.domain.user.repository.ProblemRewardRepository;
 import com.example.cortebe.domain.user.repository.UserRepository;
 import com.example.cortebe.global.security.jwt.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +47,9 @@ class LeaderboardControllerTests {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private ProblemRewardRepository problemRewardRepository;
+
     private User solver;
 
     @BeforeEach
@@ -75,6 +80,27 @@ class LeaderboardControllerTests {
             .andExpect(jsonPath("$.size").value(20))
             .andExpect(jsonPath("$.totalElements").value(1))
             .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    void 리더보드_점수는_회원_티어_조회_점수와_같다() throws Exception {
+        // given: 실버 문제지만 예전에 10점으로 지급된 기록이 있고, 기록 없는 골드 정답도 하나 있다
+        Problem silver = problemRepository.findAll().stream()
+            .filter(problem -> problem.getDifficulty() == Difficulty.SILVER_5).findFirst().orElseThrow();
+        problemRewardRepository.save(ProblemReward.builder().user(solver).problem(silver).points(10L).build());
+        saveJob(saveProblem(Difficulty.GOLD_1), solver, Verdict.ACCEPTED);
+        String token = bearer(solver);
+
+        // when & then: 리더보드를 먼저 본 뒤 티어를 조회해도(빠진 기록이 저장돼도) 두 점수는 40점으로 같다
+        mockMvc.perform(get("/api/leaderboard"))
+            .andExpect(jsonPath("$.content[0].score").value(40))
+            .andExpect(jsonPath("$.content[0].tier").value("BRONZE_2"));
+        mockMvc.perform(get("/api/users/me/tier").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.score").value(40))
+            .andExpect(jsonPath("$.tier").value("BRONZE_2"));
+        mockMvc.perform(get("/api/leaderboard"))
+            .andExpect(jsonPath("$.content[0].score").value(40));
     }
 
     @Test

@@ -36,6 +36,8 @@
     - 더하기, 정답 제출은 있지만 아직 지급 기록이 없는 문제마다 현재 난이도 점수(#74: 브론즈 10, 실버 20, 골드 30,
       플래티넘 40, 다이아 50, 루비 60, 미지정 0). #74는 이런 문제를 첫 티어 조회 때 같은 값으로 기록한다
     - 리더보드 조회는 기록을 새로 쓰지 않는다(읽기 전용)
+    - 0점 기록이 있는 문제는 지금 난이도가 매겨져 있어도 0점이다(#74와 같다)
+    - 채점된 제출이 하나도 없는 회원의 지급 기록은 순위표 대상이 아니라 무시한다. 지금은 이런 상태를 만드는 경로가 없다
   - 티어: `UserTier.fromScore(score)`
   - solvedCount: 정답 제출이 있는 서로 다른 문제 수
   - submissionCount: 집계 대상 제출 수
@@ -54,6 +56,7 @@
 - 트랜잭션: 읽기 전용 / 동시성: 해당 없음(읽기만)
 - 성능: 조회할 때마다 계산한다. 제출(회원 ID·닉네임·문제 ID·난이도·판정·제출 시각)과 지급 기록(회원 ID·문제 ID·points)을
   interface projection으로 각각 한 번에 조회하고 집계·필터·정렬·페이지는 Java에서 한다. 반복 조회 없음
+- 가정: 난이도별 점수는 #74의 `UserTierService.points`를 공개(static)로 바꿔 그대로 쓴다. 팀원 코드 위치를 옮기지 않으려고 고른 가장 작은 변경이다
 - 가정: 관리자 여부는 DB에 없어(`ADMIN_EMAILS`로만 판단) 관리자도 일반 회원처럼 순위에 들어간다
 - 범위 밖: 난이도 투표·리뷰 채택·문제 제작 점수, rank.md XP 체계, 다른 사용자 프로필 API, 프론트 연결
 - 새 컨벤션(`src/main/AGENTS.md`에 반영)
@@ -66,6 +69,9 @@
 | 집계 대상 제출(회원 제출, 주어진 판정만, 비회원·직접 실행 제외) | `JudgeJobRepositoryTests#리더보드용_조회는_모든_회원의_제출_중_주어진_판정만_회원과_문제_정보와_함께_가져온다` | 컴파일 실패: `findLeaderboardRows`·`LeaderboardRow` 없음 |
 | 채점 완료 7종 판정으로 조회, 결과 없으면 빈 페이지(totalPages 0) | `LeaderboardServiceTests#채점이_끝난_7가지_판정만_조회한다` | 컴파일 실패: `LeaderboardService` 없음 |
 | score(지급 기록 합계 + 기록 없는 정답 문제의 현재 난이도 점수, 같은 문제 한 번, 오답 제외, 제출 행 없는 기록 포함), solvedCount, 티어(`UserTier.fromScore`) | `LeaderboardServiceTests#점수는_지급_기록_합계에_기록이_없는_정답_문제의_현재_난이도_점수를_더한다` | #74 기준으로 바꿀 때 컴파일 실패: `findAllRewardRows`·`RewardRow`·`score` 없음 |
+| 0점 기록은 지금 난이도와 상관없이 0점 | `LeaderboardServiceTests#영점_지급_기록이_있으면_지금_난이도가_매겨져_있어도_영점이다` | 구현 뒤 리뷰 지적으로 추가. 현재 구현에서 바로 통과(레드 없음) |
+| 채점된 제출이 없는 회원의 지급 기록 무시 | `LeaderboardServiceTests#채점된_제출이_없는_회원의_지급_기록은_무시한다` | 구현 뒤 리뷰 지적으로 추가. 현재 구현에서 바로 통과(레드 없음) |
+| 리더보드 score = 회원 티어 조회 score(지급 기록 반영 전후) | `LeaderboardControllerTests#리더보드_점수는_회원_티어_조회_점수와_같다` | 구현 뒤 리뷰 지적으로 추가. 현재 구현에서 바로 통과(레드 없음) |
 | 다른 회원의 지급 기록을 섞지 않음 | `LeaderboardServiceTests#다른_회원의_지급_기록은_섞지_않는다` | 위와 같음 |
 | 지급 기록 조회(모든 회원, 회원·문제·점수) | `ProblemRewardRepositoryTests#리더보드용_조회는_모든_회원의_지급_기록을_회원_문제_점수만_가져온다` | 위와 같음 |
 | 난이도별 점수 표, 티어 경계 | #74의 `UserTierServiceTests`, `UserTierTests`가 검증한다(같은 `UserTierService.points`·`UserTier.fromScore`를 호출) | 해당 없음: 기존 테스트 |
