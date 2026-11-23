@@ -61,3 +61,28 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
+| 집계 대상 제출(회원 제출, 주어진 판정만, 비회원·직접 실행 제외) | `JudgeJobRepositoryTests#리더보드용_조회는_모든_회원의_제출_중_주어진_판정만_회원과_문제_정보와_함께_가져온다` | 컴파일 실패: `findLeaderboardRows`·`LeaderboardRow` 없음 |
+| 채점 완료 7종 판정으로 조회, 결과 없으면 빈 페이지(totalPages 0) | `LeaderboardServiceTests#채점이_끝난_7가지_판정만_조회한다` | 컴파일 실패: `LeaderboardService` 없음 |
+| XP(서로 다른 정답 문제마다 한 번, 오답 제외, Ruby 900, Unrated 0), solvedCount | `LeaderboardServiceTests#XP는_서로_다른_정답_문제마다_난이도_XP를_한_번씩_더한다` | 위와 같음 |
+| 난이도별 XP 표 | `LeaderboardServiceTests#난이도별_XP는_rank_md_표를_따른다` | 위와 같음 |
+| 티어(누적 XP 이상인 가장 높은 단계, 경계값), 31단계 | `UserTierTests#누적_XP_이상인_가장_높은_단계를_고른다`, `UserTierTests#단계는_브론즈_5부터_마스터까지_31개다` | 컴파일 실패: `UserTier` 없음 |
+| 순위표 대상(정답 1개 이상) | `LeaderboardServiceTests#정답_문제가_없는_회원은_순위표에_넣지_않는다` | 컴파일 실패: `LeaderboardService` 없음 |
+| submissionCount, accuracy | `LeaderboardServiceTests#제출_수와_정답률은_채점이_끝난_제출_기준으로_센다` | 위와 같음 |
+| streak(오늘까지 이어진 정답 날, 오답만 낸 날 제외) | `LeaderboardServiceTests#연속_풀이는_오늘까지_이어진_정답_날짜_수다` | 위와 같음 |
+| streak(어제에서 끝나도 셈) | `LeaderboardServiceTests#오늘_정답이_없어도_어제까지_이어졌으면_센다` | 위와 같음 |
+| streak(그제 이전에 끝나면 0) | `LeaderboardServiceTests#마지막_정답이_그제_이전이면_연속_풀이는_0이다` | 위와 같음 |
+| streak 날짜(한국 시간 자정 기준) | `LeaderboardServiceTests#연속_풀이_날짜는_한국_시간_자정을_기준으로_나눈다` | 위와 같음 |
+| 순위(XP → 정답 수 → 회원 ID, 공동 순위 없음) | `LeaderboardServiceTests#순위는_XP_정답_수_회원_ID_순으로_매긴다` | 위와 같음 |
+| 검색(닉네임 부분 일치·대소문자 무시·공백 제거), 필터 후 순위 유지 | `LeaderboardServiceTests#검색과_필터를_걸어도_순위_번호는_전체_기준을_유지한다` | 위와 같음 |
+| 티어·정답 수 범위(양 끝 포함) | `LeaderboardServiceTests#티어와_정답_수_범위는_양_끝을_포함한다` | 위와 같음 |
+| 정렬 기본 방향(RANK 오름, 나머지 내림), 방향 지정 | `LeaderboardServiceTests#정렬_방향이_없으면_순위는_오름차순_나머지는_내림차순이다` | 위와 같음 |
+| 정렬 값이 같으면 순위 오름차순 | `LeaderboardServiceTests#정렬_값이_같으면_순위_오름차순으로_둔다` | 위와 같음 |
+| 페이지 자르기, page·size·totalElements·totalPages | `LeaderboardServiceTests#페이지를_잘라서_돌려준다` | 위와 같음 |
+| 로그인 회원 항목에만 `me: true` | `LeaderboardServiceTests#로그인한_회원의_항목에만_me를_표시한다`, `LeaderboardControllerTests#로그인하면_내_항목에_me를_표시한다` | 컴파일 실패 / `expected 200 but was 404`(엔드포인트 없음) |
+| 오류: page 음수, size 1~100 밖 | `LeaderboardServiceTests#페이지_범위를_벗어나면_조회에_실패한다`, `LeaderboardControllerTests#페이지_크기가_범위를_벗어나면_400_C001을_반환한다` | 컴파일 실패 / `expected 400 but was 401`(공개 경로 아님) |
+| 오류: 정답 수 음수, min > max | `LeaderboardServiceTests#정답_수_범위가_잘못되면_조회에_실패한다` | 컴파일 실패: `LeaderboardService` 없음 |
+| 오류: minTier가 maxTier보다 높음 | `LeaderboardServiceTests#최소_티어가_최대_티어보다_높으면_조회에_실패한다` | 위와 같음 |
+| 오류: 없는 정렬·티어 이름, 정수가 아닌 숫자 | `LeaderboardControllerTests#없는_정렬_이름이면_400_C001을_반환한다`, `#없는_티어_이름이면_400_C001을_반환한다`, `#정수가_아닌_정답_수면_400_C001을_반환한다` | `expected 400 but was 401`(공개 경로·엔드포인트 없음) |
+| API 200 응답 필드, 토큰 없이 공개 조회 | `LeaderboardControllerTests#토큰_없이도_리더보드를_조회한다` | `expected 200 but was 401` |
+| 쿼리 파라미터 바인딩(keyword, tier, solved, sort, direction, page, size) | `LeaderboardControllerTests#검색_필터_정렬_파라미터를_받는다` | `expected 200 but was 401` |
+| 트랜잭션·동시성 | 해당 없음: 읽기 전용 조회만 한다 | 해당 없음 |
