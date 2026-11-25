@@ -8,11 +8,13 @@ import com.example.cortebe.domain.user.dto.GrassResponse;
 import com.example.cortebe.domain.user.dto.LinkGithubRequest;
 import com.example.cortebe.domain.user.dto.ThemeResponse;
 import com.example.cortebe.domain.user.dto.UpdateThemeRequest;
+import com.example.cortebe.domain.user.dto.UserProfileResponse;
 import com.example.cortebe.domain.user.dto.UserStatsResponse;
 import com.example.cortebe.domain.user.dto.UserTierResponse;
 import com.example.cortebe.domain.user.service.GithubLinkService;
 import com.example.cortebe.domain.user.service.GrassService;
 import com.example.cortebe.domain.user.service.ThemeService;
+import com.example.cortebe.domain.user.service.UserProfileService;
 import com.example.cortebe.domain.user.service.UserStatsService;
 import com.example.cortebe.domain.user.service.UserTierService;
 import jakarta.validation.Valid;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,6 +42,13 @@ public class UserController {
     private final ThemeService themeService;
     private final UserTierService userTierService;
     private final GithubLinkService githubLinkService;
+    private final UserProfileService userProfileService;
+
+    // 다른 회원도 볼 수 있는 공개 프로필
+    @GetMapping("/{userId}/profile")
+    public UserProfileResponse getProfile(@PathVariable Long userId) {
+        return userProfileService.get(userId);
+    }
 
     @GetMapping("/me/tier")
     public UserTierResponse getMyTier(@AuthenticationPrincipal Long userId) {

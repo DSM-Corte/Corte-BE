@@ -55,7 +55,7 @@ global/
 ### 아키텍처
 
 - 요청 흐름: `GlobalExceptionFilter`(최우선) → Spring Security(`JwtAuthenticationFilter`) → Controller → `GlobalExceptionHandler`.
-- 보안: 세션 없음, CSRF 끔. 공개 경로는 Swagger, `/auth/**`, `GET`·`HEAD /api/problems/**`, `GET /api/leaderboard`.
+- 보안: 세션 없음, CSRF 끔. 공개 경로는 Swagger, `/auth/**`, `GET`·`HEAD /api/problems/**`, `GET /api/leaderboard`, `GET /api/users/{userId}/profile`.
   문제 쓰기는 `ADMIN`, 나머지는 인증 필요. `/auth/**`에서는 토큰을 검사하지 않는다.
   principal은 `Long userId`, 권한은 JWT `role` 클레임(`USER`/`ADMIN`, 없으면 `USER`)이다.
 - 트랜잭션: `open-in-view: false`. 지연 로딩과 DTO 변환은 Service 트랜잭션 안에서 끝낸다.
