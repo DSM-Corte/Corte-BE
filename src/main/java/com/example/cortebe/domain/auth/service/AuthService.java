@@ -66,7 +66,8 @@ public class AuthService {
         }
 
         Role role = adminProperties.isAdmin(user.getEmail()) ? Role.ADMIN : Role.USER;
-        boolean remember = Boolean.TRUE.equals(request.rememberMe());
+        // 관리자는 권한 회수와 탈취 피해를 줄이려고 로그인 상태 유지를 켜도 짧은 토큰만 준다
+        boolean remember = role == Role.USER && Boolean.TRUE.equals(request.rememberMe());
         return new TokenResponse(jwtProvider.createAccessToken(user.getId(), role, remember));
     }
 

@@ -220,6 +220,21 @@ class AuthControllerTests {
         assertThat(lifetimeSeconds(omitted)).isEqualTo(Duration.ofMinutes(30).toSeconds());
     }
 
+    @Test
+    void 관리자는_로그인_상태_유지를_켜도_30분_토큰을_받는다() throws Exception {
+        // given
+        userRepository.save(new User("admin@corte.com", passwordEncoder.encode("password1234"), "admin"));
+
+        // when
+        String token = loginWithBody("""
+            {"email": "admin@corte.com", "password": "password1234", "rememberMe": true}
+            """);
+
+        // then
+        assertThat(roleOf(token)).isEqualTo("ROLE_ADMIN");
+        assertThat(lifetimeSeconds(token)).isEqualTo(Duration.ofMinutes(30).toSeconds());
+    }
+
     private String loginWithBody(String body) throws Exception {
         String response = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
