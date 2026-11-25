@@ -26,4 +26,19 @@
 - 새 컨벤션: 없음
 
 ## 테스트 대응
-(구현하며 채운다)
+| 명세 항목 | 테스트 | 레드 증거 |
+| --- | --- | --- |
+| 목록: 해당 게시글 댓글만, 작성자 닉네임 join, 오래된 순 | `PostCommentRepositoryTests#목록_조회는_해당_게시글의_댓글만_작성자_닉네임과_함께_오래된_순으로_가져온다` | 컴파일 실패: `PostComment`, `PostCommentRepository` 없음 |
+| 게시글 삭제 시 댓글 일괄 삭제(다른 게시글 댓글은 유지) | `PostCommentRepositoryTests#게시글의_댓글만_모두_삭제한다`, `PostServiceTests#게시글을_삭제하면_댓글을_먼저_지운_뒤_게시글을_지운다`, `PostCommentControllerTests#게시글을_삭제하면_댓글도_함께_삭제된다` | 컴파일 실패: `deleteAllByPostId` 없음 |
+| POST 201 + Location + 댓글 응답(작성자 닉네임) | `PostCommentControllerTests#댓글을_작성하면_201과_Location과_댓글을_준다`, `PostCommentServiceTests#댓글을_작성하면_작성자_닉네임과_함께_응답한다` | 컴파일 실패: `PostCommentService` 없음 |
+| 게시글 없음 → 404 B001 (작성·목록) | `PostCommentServiceTests#게시글이_없으면_댓글을_작성할_수_없다`, `#게시글이_없으면_댓글_목록을_조회할_수_없다`, `PostCommentControllerTests#없는_게시글이면_404_B001을_준다` | 컴파일 실패 |
+| 토큰은 유효한데 회원 없음 → 401 | `PostCommentServiceTests#회원이_없으면_댓글을_작성할_수_없다` | 컴파일 실패 |
+| GET 목록 오래된 순·페이징 | `PostCommentControllerTests#댓글_목록은_오래된_순으로_페이징해서_준다`, `PostCommentServiceTests#댓글_목록은_오래된_순으로_조회해_응답으로_바꾼다` | 컴파일 실패 |
+| 페이지 범위 오류 → 400 C001 | `PostCommentServiceTests#페이지_범위가_잘못되면_댓글_목록_조회에_실패한다`, `PostCommentControllerTests#페이지_범위가_잘못되면_400_C001을_준다` | 컴파일 실패 |
+| PATCH 200, null이면 본문 유지 | `PostCommentControllerTests#작성자는_댓글을_수정할_수_있다`, `PostCommentServiceTests#작성자가_수정하면_본문이_바뀐다`, `#수정_본문이_null이면_기존_본문을_유지한다` | 컴파일 실패 |
+| DELETE 204 | `PostCommentControllerTests#작성자는_댓글을_삭제할_수_있다`, `PostCommentServiceTests#작성자가_삭제하면_댓글이_지워진다` | 컴파일 실패 |
+| 작성자가 아니면 403 B004 (수정·삭제) | `PostCommentControllerTests#작성자가_아니면_수정과_삭제에_403_B004를_준다`, `PostCommentServiceTests#작성자가_아니면_댓글을_수정할_수_없다`, `#작성자가_아니면_댓글을_삭제할_수_없다` | 컴파일 실패: `PostCommentForbiddenException` 없음 |
+| 댓글 없음 / 다른 게시글의 댓글 → 404 B003 | `PostCommentControllerTests#없는_댓글이거나_다른_게시글의_댓글이면_404_B003을_준다`, `PostCommentServiceTests#댓글이_없으면_수정할_수_없다`, `#다른_게시글의_댓글이면_수정할_수_없다`, `#다른_게시글의_댓글이면_삭제할_수_없다` | 컴파일 실패: `PostCommentNotFoundException` 없음 |
+| 본문 공백·501자 → 400 C001, 500자는 허용(경계값) | `PostCommentControllerTests#본문이_공백이거나_500자를_넘으면_400_C001을_준다`, `#본문이_정확히_500자면_작성할_수_있다` | 컴파일 실패 |
+| 토큰 없음 → 401 A001 | `PostCommentControllerTests#토큰이_없으면_401_A001을_준다` | 컴파일 실패(보안 설정이 이미 막아 구현 후에도 같은 결과) |
+| 트랜잭션·동시성·성능(join 1회, 벌크 삭제) | 해당 없음: 락 없는 단순 덮어쓰기. 쿼리 동작은 위 Repository 테스트가 검증 | 해당 없음 |

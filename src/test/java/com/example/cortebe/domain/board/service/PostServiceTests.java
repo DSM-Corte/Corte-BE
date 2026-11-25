@@ -5,6 +5,7 @@ import com.example.cortebe.domain.board.dto.UpdatePostRequest;
 import com.example.cortebe.domain.board.entity.Post;
 import com.example.cortebe.domain.board.exception.PostForbiddenException;
 import com.example.cortebe.domain.board.exception.PostNotFoundException;
+import com.example.cortebe.domain.board.repository.PostCommentRepository;
 import com.example.cortebe.domain.board.repository.PostRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
@@ -12,6 +13,7 @@ import com.example.cortebe.global.error.exception.CorteException;
 import com.example.cortebe.global.error.exception.GlobalErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +37,9 @@ class PostServiceTests {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PostCommentRepository postCommentRepository;
 
     @InjectMocks
     private PostService postService;
@@ -121,5 +127,21 @@ class PostServiceTests {
         postService.delete(1L, 10L);
 
         verify(postRepository).delete(post);
+    }
+
+    @Test
+    void 게시글을_삭제하면_댓글을_먼저_지운_뒤_게시글을_지운다() {
+        // given
+        Post post = Post.builder().title("제목").content("본문").author(userWithId(1L, "사용자1")).build();
+        when(postRepository.findWithAuthorById(10L)).thenReturn(Optional.of(post));
+        ReflectionTestUtils.setField(post, "id", 10L);
+
+        // when
+        postService.delete(1L, 10L);
+
+        // then
+        InOrder order = inOrder(postCommentRepository, postRepository);
+        order.verify(postCommentRepository).deleteAllByPostId(10L);
+        order.verify(postRepository).delete(post);
     }
 }
