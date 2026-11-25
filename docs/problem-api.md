@@ -38,7 +38,7 @@
 | DELETE /api/problems/{id} | ADMIN |
 
 비로그인 사용자의 쓰기 요청은 기존 인증 오류 응답(401, A001)을 반환하고,
-로그인했지만 관리자가 아닌 사용자의 쓰기 요청은 Spring Security의 기본 403 처리를 따른다.
+로그인했지만 관리자가 아닌 사용자의 쓰기 요청은 403 `A004`("접근 권한이 없습니다.") 공통 JSON 오류를 반환한다.
 요청 본문이나 임의 헤더에 role=ADMIN을 넣어서는 권한을 얻을 수 없다.
 
 `JwtProvider.createAccessToken(userId)`는 USER 역할로 발급한다.
@@ -84,6 +84,19 @@
 ```
 
 ## 목록 조회
+
+### 난이도 등급·내 해결 상태 필터
+
+`GET /api/problems?difficultyTier=BRONZE&solveStatus=UNSOLVED&page=0&size=20`
+
+- `difficultyTier`: 생략하면 전체. `UNRATED`, `BRONZE`, `SILVER`, `GOLD`, `PLATINUM`, `DIAMOND`, `RUBY`. 등급은 해당 5~1단계를 모두 포함한다.
+- `solveStatus`: 생략 또는 `ALL`은 전체, `SOLVED`는 해결함, `UNSOLVED`는 미해결이다.
+- 해결함은 로그인한 회원의 정식 제출 중 `ACCEPTED`가 한 번 이상 있는 문제다. 중복 정답도 한 문제로 센다. 직접 실행·비회원·다른 회원 기록은 제외한다.
+- 미해결에는 미제출 문제와 정답 없이 시도한 문제가 모두 포함된다.
+- 난이도 조회는 공개다. 개인 상태 필터는 로그인 필수이며 회원이 없거나 미인증이면 `401 A001`을 반환한다.
+- 대소문자를 포함해 정의된 값만 받는다. 빈 값·공백·알 수 없는 값은 `400 C001`이다.
+- 카테고리·태그와 모두 AND로 결합한다. 필터링과 총 개수·페이징은 DB에서 처리하고 응답 형식은 기존과 같다.
+
 
 `GET /api/problems?page=0&size=20` → `200 OK`
 

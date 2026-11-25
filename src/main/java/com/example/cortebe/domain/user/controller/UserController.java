@@ -86,6 +86,11 @@ public class UserController {
         return themeService.updateMyTheme(userId, request);
     }
 
+    @GetMapping("/me/github")
+    public GithubLinkResponse getMyGithub(@AuthenticationPrincipal Long userId) {
+        return githubLinkService.get(userId);
+    }
+
     @PutMapping("/me/github")
     public GithubLinkResponse linkMyGithub(@AuthenticationPrincipal Long userId,
                                            @Valid @RequestBody LinkGithubRequest request) {
