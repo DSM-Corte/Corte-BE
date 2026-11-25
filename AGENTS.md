@@ -49,12 +49,13 @@ global/
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 채점 정답 확정 시 연동된 회원의 첫 정답에서 발행한다(연동 정보는 `PUT /api/users/me/github`(ADMIN 전용)로 저장한다) |
 | 테스트케이스·제출·채점 | 관리자 케이스 CRUD, 비회원 포함 실행·채점. 기존 Judge0 Provider 연결, 입력 사전 전달·HTTP 결과 조회. 상세 `docs/judge-api.md` |
-| AI 리뷰, 점수/랭킹 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
+| 리더보드 | `GET /api/leaderboard` 공개 조회. 회원 티어(#74)와 같은 점수로 조회 때마다 계산하고 검색·필터·정렬·페이지는 서버에서 한다. 상세 `docs/specs/79-leaderboard.md` |
+| AI 리뷰 | 아직 없다. 코드에 없는 구조를 사실처럼 가정하지 않는다 |
 
 ### 아키텍처
 
 - 요청 흐름: `GlobalExceptionFilter`(최우선) → Spring Security(`JwtAuthenticationFilter`) → Controller → `GlobalExceptionHandler`.
-- 보안: 세션 없음, CSRF 끔. 공개 경로는 Swagger, `/auth/**`, `GET`·`HEAD /api/problems/**`.
+- 보안: 세션 없음, CSRF 끔. 공개 경로는 Swagger, `/auth/**`, `GET`·`HEAD /api/problems/**`, `GET /api/leaderboard`.
   문제 쓰기는 `ADMIN`, 나머지는 인증 필요. `/auth/**`에서는 토큰을 검사하지 않는다.
   principal은 `Long userId`, 권한은 JWT `role` 클레임(`USER`/`ADMIN`, 없으면 `USER`)이다.
 - 트랜잭션: `open-in-view: false`. 지연 로딩과 DTO 변환은 Service 트랜잭션 안에서 끝낸다.

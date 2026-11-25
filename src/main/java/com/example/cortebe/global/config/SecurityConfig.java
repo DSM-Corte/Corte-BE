@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/executions", "/api/submissions").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/executions/*", "/api/submissions/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/problems", "/api/problems/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/leaderboard").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/problems", "/api/problems/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/problems", "/api/problems/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/problems", "/api/problems/**").hasRole("ADMIN")

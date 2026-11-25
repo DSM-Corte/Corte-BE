@@ -26,6 +26,16 @@ public interface ProblemRewardRepository extends JpaRepository<ProblemReward, Lo
         """)
     List<UnrecordedProblem> findUnrecordedSolvedProblems(Long userId, Verdict verdict, Pageable pageable);
 
+    // 리더보드용: 모든 회원의 지급 기록을 회원·문제·점수만 가져온다
+    @Query("select r.user.id as userId, r.problem.id as problemId, r.points as points from ProblemReward r")
+    List<RewardRow> findAllRewardRows();
+
+    interface RewardRow {
+        Long getUserId();
+        Long getProblemId();
+        Long getPoints();
+    }
+
     interface UnrecordedProblem {
         Long getProblemId();
         Difficulty getDifficulty();
