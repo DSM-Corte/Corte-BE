@@ -38,7 +38,7 @@
 | DELETE /api/problems/{id} | ADMIN |
 
 비로그인 사용자의 쓰기 요청은 기존 인증 오류 응답(401, A001)을 반환하고,
-로그인했지만 관리자가 아닌 사용자의 쓰기 요청은 Spring Security의 기본 403 처리를 따른다.
+로그인했지만 관리자가 아닌 사용자의 쓰기 요청은 403 `A004`("접근 권한이 없습니다.") 공통 JSON 오류를 반환한다.
 요청 본문이나 임의 헤더에 role=ADMIN을 넣어서는 권한을 얻을 수 없다.
 
 `JwtProvider.createAccessToken(userId)`는 USER 역할로 발급한다.

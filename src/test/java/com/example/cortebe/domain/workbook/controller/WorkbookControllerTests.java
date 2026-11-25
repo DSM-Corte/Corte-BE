@@ -147,7 +147,9 @@ class WorkbookControllerTests {
             for (var request : requests) {
                 request.contentType(MediaType.APPLICATION_JSON);
                 if (role != null) request.header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtProvider.createAccessToken(1L, role));
-                mockMvc.perform(request).andExpect(role == null ? status().isUnauthorized() : status().isForbidden());
+                mockMvc.perform(request)
+                    .andExpect(role == null ? status().isUnauthorized() : status().isForbidden())
+                    .andExpect(jsonPath("$.code").value(role == null ? "A001" : "A004"));
             }
         }
     }

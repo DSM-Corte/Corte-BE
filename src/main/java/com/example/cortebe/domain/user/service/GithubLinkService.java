@@ -16,6 +16,12 @@ public class GithubLinkService {
 
     private final UserRepository userRepository;
 
+    public GithubLinkResponse get(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(UnauthorizedException::new);
+        return GithubLinkResponse.from(user);
+    }
+
     @Transactional
     public GithubLinkResponse link(Long userId, LinkGithubRequest request) {
         User user = userRepository.findById(userId)
