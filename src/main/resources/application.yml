@@ -49,6 +49,7 @@ judge0:
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: ${JWT_ACCESS_EXPIRATION:30m}
+  remember-expiration: ${JWT_REMEMBER_EXPIRATION:7d}
 
 judge:
   enabled: ${JUDGE_ENABLED:false}

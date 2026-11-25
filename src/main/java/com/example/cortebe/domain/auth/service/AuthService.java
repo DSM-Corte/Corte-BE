@@ -66,7 +66,8 @@ public class AuthService {
         }
 
         Role role = adminProperties.isAdmin(user.getEmail()) ? Role.ADMIN : Role.USER;
-        return new TokenResponse(jwtProvider.createAccessToken(user.getId(), role));
+        boolean remember = Boolean.TRUE.equals(request.rememberMe());
+        return new TokenResponse(jwtProvider.createAccessToken(user.getId(), role, remember));
     }
 
     private boolean isEmailUniqueViolation(DataIntegrityViolationException e) {

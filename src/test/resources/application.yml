@@ -20,6 +20,7 @@ judge0:
 jwt:
   secret: dGVzdC1zZWNyZXQta2V5LWZvci1jb3J0ZS1iZS10ZXN0LW9ubHktMzJieXRlcw==
   access-expiration: 30m
+  remember-expiration: 7d
 
 admin:
   emails: admin@corte.com

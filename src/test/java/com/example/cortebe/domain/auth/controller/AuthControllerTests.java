@@ -13,6 +13,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Base64;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static com.jayway.jsonpath.JsonPath.read;
@@ -182,6 +186,55 @@ class AuthControllerTests {
 
         // then
         assertThat(roleOf(token)).isEqualTo("ROLE_USER");
+    }
+
+    @Test
+    void 로그인_상태_유지를_켜면_7일_토큰을_받는다() throws Exception {
+        // given
+        userRepository.save(new User("test@corte.com", passwordEncoder.encode("password1234"), "corte"));
+
+        // when
+        String token = loginWithBody("""
+            {"email": "test@corte.com", "password": "password1234", "rememberMe": true}
+            """);
+
+        // then
+        assertThat(lifetimeSeconds(token)).isEqualTo(Duration.ofDays(7).toSeconds());
+    }
+
+    @Test
+    void 로그인_상태_유지를_끄거나_빼면_30분_토큰을_받는다() throws Exception {
+        // given
+        userRepository.save(new User("test@corte.com", passwordEncoder.encode("password1234"), "corte"));
+
+        // when
+        String off = loginWithBody("""
+            {"email": "test@corte.com", "password": "password1234", "rememberMe": false}
+            """);
+        String omitted = loginWithBody("""
+            {"email": "test@corte.com", "password": "password1234"}
+            """);
+
+        // then
+        assertThat(lifetimeSeconds(off)).isEqualTo(Duration.ofMinutes(30).toSeconds());
+        assertThat(lifetimeSeconds(omitted)).isEqualTo(Duration.ofMinutes(30).toSeconds());
+    }
+
+    private String loginWithBody(String body) throws Exception {
+        String response = mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        return read(response, "$.accessToken");
+    }
+
+    // 토큰 본문(payload)의 exp - iat. 초 단위다
+    private long lifetimeSeconds(String token) {
+        String payload = new String(Base64.getUrlDecoder().decode(token.split("\\.")[1]), StandardCharsets.UTF_8);
+        Number exp = read(payload, "$.exp");
+        Number iat = read(payload, "$.iat");
+        return exp.longValue() - iat.longValue();
     }
 
     private String loginAndGetToken(String email) throws Exception {
