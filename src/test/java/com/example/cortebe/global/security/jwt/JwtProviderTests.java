@@ -20,7 +20,7 @@ class JwtProviderTests {
 
     private static final String SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci1jb3J0ZS1iZS10ZXN0LW9ubHktMzJieXRlcw==";
 
-    private final JwtProvider jwtProvider = new JwtProvider(SECRET, Duration.ofMinutes(30));
+    private final JwtProvider jwtProvider = new JwtProvider(SECRET, Duration.ofMinutes(30), Duration.ofDays(7));
 
     @Test
     void createAndParseAccessToken() {
@@ -39,7 +39,7 @@ class JwtProviderTests {
 
     @Test
     void expiredToken() {
-        JwtProvider expiredProvider = new JwtProvider(SECRET, Duration.ofMillis(-1));
+        JwtProvider expiredProvider = new JwtProvider(SECRET, Duration.ofMillis(-1), Duration.ofMillis(-1));
         String token = expiredProvider.createAccessToken(1L);
 
         assertThatThrownBy(() -> jwtProvider.getUserId(token))
@@ -96,7 +96,7 @@ class JwtProviderTests {
 
     @Test
     void 만료된_토큰으로는_권한을_얻을_수_없다() {
-        JwtProvider expiredProvider = new JwtProvider(SECRET, Duration.ofMillis(-1));
+        JwtProvider expiredProvider = new JwtProvider(SECRET, Duration.ofMillis(-1), Duration.ofMillis(-1));
         String token = expiredProvider.createAccessToken(1L, Role.ADMIN);
 
         assertThatThrownBy(() -> jwtProvider.getAuthentication(token))

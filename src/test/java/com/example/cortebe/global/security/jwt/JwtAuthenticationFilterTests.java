@@ -19,9 +19,9 @@ class JwtAuthenticationFilterTests {
 
     private static final String SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci1jb3J0ZS1iZS10ZXN0LW9ubHktMzJieXRlcw==";
 
-    private final JwtProvider jwtProvider = new JwtProvider(SECRET, Duration.ofMinutes(30));
+    private final JwtProvider jwtProvider = new JwtProvider(SECRET, Duration.ofMinutes(30), Duration.ofDays(7));
     private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtProvider);
-    private final String expiredToken = new JwtProvider(SECRET, Duration.ofMillis(-1)).createAccessToken(1L);
+    private final String expiredToken = new JwtProvider(SECRET, Duration.ofMillis(-1), Duration.ofMillis(-1)).createAccessToken(1L);
 
     @AfterEach
     void clearContext() {

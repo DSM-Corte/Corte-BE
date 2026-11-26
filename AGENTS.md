@@ -36,7 +36,7 @@ global/
   swagger/   API별 오류 응답 예시 자동 생성
 ```
 
-- 설정: `src/main/resources/application.yml`. 값은 `${ENV:기본값}`으로 환경 변수에서 받는다. 필수 값은 `JWT_SECRET`(Base64).
+- 설정: `src/main/resources/application.yml`. 값은 `${ENV:기본값}`으로 환경 변수에서 받는다. 필수 값은 `JWT_SECRET`(Base64). 토큰 만료는 `JWT_ACCESS_EXPIRATION`(기본 30m), 로그인 상태 유지는 `JWT_REMEMBER_EXPIRATION`(기본 7d).
   GitHub App은 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`(PKCS#8), Swagger는 `SWAGGER_ENABLED`, 관리자 이메일은 `ADMIN_EMAILS`(쉼표 구분).
 - 테스트 설정은 `src/test/resources/application.yml`(H2). 실행: `compose.yml`(MySQL + app), `Dockerfile`.
 
@@ -44,7 +44,7 @@ global/
 
 | 도메인 | 상태 |
 | --- | --- |
-| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname. `ADMIN_EMAILS`에 있는 이메일로 로그인하면 ADMIN 토큰(권한 컬럼 없음, 다음 로그인부터 적용). 목록에 있는 이메일은 가입할 수 없어 관리자는 가입 후 목록에 추가한다 |
+| 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token, 기본 30분, `rememberMe: true`면 7일, 관리자는 항상 30분). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname. `ADMIN_EMAILS`에 있는 이메일로 로그인하면 ADMIN 토큰(권한 컬럼 없음, 다음 로그인부터 적용). 목록에 있는 이메일은 가입할 수 없어 관리자는 가입 후 목록에 추가한다 |
 | 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제. 댓글 `/api/posts/{postId}/comments` CRUD(작성자만 수정·삭제, 게시글 삭제 시 함께 삭제). 상세 `docs/specs/85-post-comment.md` |
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 채점 정답 확정 시 연동된 회원의 첫 정답에서 발행한다(연동 정보는 `PUT /api/users/me/github`(ADMIN 전용)로 저장한다) |

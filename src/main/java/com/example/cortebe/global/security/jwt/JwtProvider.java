@@ -26,11 +26,14 @@ public class JwtProvider {
 
     private final SecretKey secretKey;
     private final Duration accessExpiration;
+    private final Duration rememberExpiration;
 
     public JwtProvider(@Value("${jwt.secret}") String secret,
-                       @Value("${jwt.access-expiration}") Duration accessExpiration) {
+                       @Value("${jwt.access-expiration}") Duration accessExpiration,
+                       @Value("${jwt.remember-expiration}") Duration rememberExpiration) {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
         this.accessExpiration = accessExpiration;
+        this.rememberExpiration = rememberExpiration;
     }
 
     public String createAccessToken(Long userId) {
@@ -38,14 +41,20 @@ public class JwtProvider {
     }
 
     public String createAccessToken(Long userId, Role role) {
+        return createAccessToken(userId, role, false);
+    }
+
+    // remember가 true면 로그인 상태 유지용 긴 만료 시간을 쓴다
+    public String createAccessToken(Long userId, Role role, boolean remember) {
         Objects.requireNonNull(userId);
         Objects.requireNonNull(role);
+        Duration expiration = remember ? rememberExpiration : accessExpiration;
         Date now = new Date();
         return Jwts.builder()
             .subject(String.valueOf(userId))
             .claim("role", role.name())
             .issuedAt(now)
-            .expiration(new Date(now.getTime() + accessExpiration.toMillis()))
+            .expiration(new Date(now.getTime() + expiration.toMillis()))
             .signWith(secretKey)
             .compact();
     }
