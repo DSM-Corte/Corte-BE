@@ -7,6 +7,7 @@ import com.example.cortebe.domain.board.dto.UpdatePostRequest;
 import com.example.cortebe.domain.board.entity.Post;
 import com.example.cortebe.domain.board.exception.PostForbiddenException;
 import com.example.cortebe.domain.board.exception.PostNotFoundException;
+import com.example.cortebe.domain.board.repository.PostCommentRepository;
 import com.example.cortebe.domain.board.repository.PostRepository;
 import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.repository.UserRepository;
@@ -27,6 +28,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final PostCommentRepository postCommentRepository;
 
     @Transactional
     public PostResponse create(Long userId, CreatePostRequest request) {
@@ -67,7 +69,10 @@ public class PostService {
 
     @Transactional
     public void delete(Long userId, Long id) {
-        postRepository.delete(findOwnedPost(userId, id));
+        Post post = findOwnedPost(userId, id);
+        // 댓글이 게시글을 참조하므로 댓글을 먼저 지운다
+        postCommentRepository.deleteAllByPostId(post.getId());
+        postRepository.delete(post);
     }
 
     private Post findPost(Long id) {
