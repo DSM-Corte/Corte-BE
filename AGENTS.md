@@ -45,7 +45,7 @@ global/
 | 도메인 | 상태 |
 | --- | --- |
 | 인증·회원 | `POST /auth/signup`(201), `POST /auth/login`(access token, 기본 30분, `rememberMe: true`면 7일, 관리자는 항상 30분). 리프레시 토큰 없음. 회원은 email(유니크)·password·nickname. `ADMIN_EMAILS`에 있는 이메일로 로그인하면 ADMIN 토큰(권한 컬럼 없음, 다음 로그인부터 적용). 목록에 있는 이메일은 가입할 수 없어 관리자는 가입 후 목록에 추가한다 |
-| 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제 |
+| 게시판 | `/api/posts` CRUD. 작성자만 수정·삭제. 댓글 `/api/posts/{postId}/comments` CRUD(작성자만 수정·삭제, 게시글 삭제 시 함께 삭제). 상세 `docs/specs/85-post-comment.md` |
 | 문제 | `/api/problems` CRUD. 조회는 공개, 생성·수정·삭제는 ADMIN. 상세 명세 `docs/problem-api.md` |
 | GitHub 풀이 저장 | `ProblemSolvedEvent`를 받아 README와 코드를 커밋 하나로 저장. 채점 정답 확정 시 연동된 회원의 첫 정답에서 발행한다(연동 정보는 `PUT /api/users/me/github`(ADMIN 전용)로 저장한다) |
 | 테스트케이스·제출·채점 | 관리자 케이스 CRUD, 비회원 포함 실행·채점. 기존 Judge0 Provider 연결, 입력 사전 전달·HTTP 결과 조회. 상세 `docs/judge-api.md` |
