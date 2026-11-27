@@ -7,6 +7,7 @@ import com.example.cortebe.domain.problem.entity.Difficulty;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.problem.repository.ProblemRepository.TagRow;
 import com.example.cortebe.domain.user.dto.UserStatsResponse;
+import com.example.cortebe.domain.user.dto.UserStatsResponse.CategoryDifficulty;
 import com.example.cortebe.domain.user.dto.UserStatsResponse.DifficultyCount;
 import com.example.cortebe.domain.user.dto.UserStatsResponse.Group;
 import com.example.cortebe.domain.user.dto.UserStatsResponse.HardestProblem;
@@ -39,6 +40,14 @@ public class UserStatsService {
     private final ProblemRepository problemRepository;
 
     public UserStatsResponse getMyStats(Long userId) {
+        return getStats(userId, true);
+    }
+
+    public UserStatsResponse getPublicStats(Long userId) {
+        return getStats(userId, false);
+    }
+
+    private UserStatsResponse getStats(Long userId, boolean includeCategoryDifficulties) {
         List<StatRow> rows = judgeJobRepository.findStatRows(userId, JUDGED_VERDICTS);
         Map<Long, List<String>> tagsByProblemId = findTags(rows);
 
@@ -74,7 +83,26 @@ public class UserStatsService {
             .tags(toGroups(tags))
             .categories(toGroups(categories))
             .hardestProblem(findHardest(solvedProblems.values()))
+            .categoryDifficulties(includeCategoryDifficulties ? findCategoryDifficulties(userId) : null)
             .build();
+    }
+
+    private List<CategoryDifficulty> findCategoryDifficulties(Long userId) {
+        // 카테고리 이름은 기존 통계와 같은 문자열 비교 규칙으로 묶는다.
+        Map<CategoryDifficultyKey, CategoryDifficulty> grouped = new HashMap<>();
+        for (var stats : problemRepository.findProblemStats(userId, JUDGED_VERDICTS, Verdict.ACCEPTED)) {
+            CategoryDifficultyKey key = new CategoryDifficultyKey(stats.getCategory(), stats.getDifficulty());
+            CategoryDifficulty counts = new CategoryDifficulty(key.category(), key.difficulty(),
+                stats.getAttemptedCount(), stats.getSolvedCount());
+            grouped.merge(key, counts, (first, second) -> new CategoryDifficulty(key.category(), key.difficulty(),
+                first.attemptedCount() + second.attemptedCount(), first.solvedCount() + second.solvedCount()));
+        }
+        return grouped.values().stream()
+            .sorted(Comparator.comparing(CategoryDifficulty::category).thenComparing(CategoryDifficulty::difficulty))
+            .toList();
+    }
+
+    private record CategoryDifficultyKey(String category, Difficulty difficulty) {
     }
 
     private Map<Long, List<String>> findTags(List<StatRow> rows) {

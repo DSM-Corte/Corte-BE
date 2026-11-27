@@ -1,5 +1,7 @@
 package com.example.cortebe.domain.problem.repository;
 
+import com.example.cortebe.domain.judge.runner.Verdict;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.service.ProblemService;
 import jakarta.persistence.EntityManager;
@@ -16,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -177,5 +180,24 @@ class ProblemRepositoryTests {
         // then
         assertThat(entityManager.createNativeQuery("select difficulty from problems where title='기존형식'", String.class)
             .getSingleResult()).isEqualTo("UNRATED");
+    }
+
+    @Test
+    void 제출이_없어도_문제마다_카테고리와_난이도와_0을_조회한다() {
+        // given
+        for (String category : List.of("Graph", "graph")) {
+            problemRepository.save(Problem.builder().title("문제").description("설명")
+                .category(category).difficulty(Difficulty.SILVER_3).memoryLimitMb(256).timeLimitMs(1000).build());
+        }
+
+        // when
+        var stats = problemRepository.findProblemStats(1L, Set.of(Verdict.ACCEPTED), Verdict.ACCEPTED);
+
+        // then
+        assertThat(stats).extracting(ProblemRepository.ProblemStats::getCategory,
+            ProblemRepository.ProblemStats::getDifficulty, ProblemRepository.ProblemStats::getAttemptedCount,
+            ProblemRepository.ProblemStats::getSolvedCount)
+            .containsExactlyInAnyOrder(tuple("Graph", Difficulty.SILVER_3, 0L, 0L),
+                tuple("graph", Difficulty.SILVER_3, 0L, 0L));
     }
 }
