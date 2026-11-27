@@ -40,7 +40,7 @@ class UserProfileServiceTests {
         ReflectionTestUtils.setField(user, "id", 3L);
         UserStatsResponse stats = UserStatsResponse.builder().solvedCount(2).build();
         given(userRepository.findById(3L)).willReturn(Optional.of(user));
-        given(userStatsService.getMyStats(3L)).willReturn(stats);
+        given(userStatsService.getPublicStats(3L)).willReturn(stats);
 
         // when
         UserProfileResponse response = userProfileService.get(3L);
@@ -59,6 +59,6 @@ class UserProfileServiceTests {
         // when & then
         assertThatThrownBy(() -> userProfileService.get(3L))
             .isInstanceOf(UserNotFoundException.class);
-        then(userStatsService).should(never()).getMyStats(anyLong());
+        then(userStatsService).should(never()).getPublicStats(anyLong());
     }
 }

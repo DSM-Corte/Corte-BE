@@ -2,6 +2,7 @@ package com.example.cortebe.domain.user.dto;
 
 import com.example.cortebe.domain.judge.runner.Verdict;
 import com.example.cortebe.domain.problem.entity.Difficulty;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 
 import java.util.List;
@@ -18,10 +19,14 @@ public record UserStatsResponse(
     List<DifficultyCount> difficulties,
     List<Group> tags,
     List<Group> categories,
-    HardestProblem hardestProblem
+    HardestProblem hardestProblem,
+    @JsonInclude(JsonInclude.Include.NON_NULL) List<CategoryDifficulty> categoryDifficulties
 ) {
     // 언어·태그·분류별 통계 한 줄
     public record Group(String name, long solvedCount, long submissionCount, long acceptedCount, double accuracy) {
+    }
+
+    public record CategoryDifficulty(String category, Difficulty difficulty, long attemptedCount, long solvedCount) {
     }
 
     public record DifficultyCount(Difficulty difficulty, long solvedCount) {

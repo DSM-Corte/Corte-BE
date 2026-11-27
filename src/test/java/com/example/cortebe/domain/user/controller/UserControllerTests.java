@@ -4,6 +4,7 @@ import com.example.cortebe.domain.judge.entity.JudgeJob;
 import com.example.cortebe.domain.judge.repository.JudgeJobRepository;
 import com.example.cortebe.domain.judge.runner.Language;
 import com.example.cortebe.domain.judge.runner.Verdict;
+import com.example.cortebe.domain.problem.entity.Difficulty;
 import com.example.cortebe.domain.problem.entity.Problem;
 import com.example.cortebe.domain.problem.repository.ProblemRepository;
 import com.example.cortebe.domain.user.entity.User;
@@ -208,7 +209,8 @@ class UserControllerTests {
             .andExpect(jsonPath("$.stats.submissionCount").value(1))
             .andExpect(jsonPath("$.stats.accuracy").value(100.0))
             .andExpect(jsonPath("$.stats.languages[0].name").value("PYTHON"))
-            .andExpect(jsonPath("$.stats.difficulties.length()").value(31));
+            .andExpect(jsonPath("$.stats.difficulties.length()").value(31))
+            .andExpect(jsonPath("$.stats.categoryDifficulties").doesNotExist());
     }
 
     @Test
@@ -475,4 +477,116 @@ class UserControllerTests {
     private String tokenOf(User user) {
         return "Bearer " + jwtProvider.createAccessToken(user.getId());
     }
+    @Test
+    void 내_정식_제출을_카테고리와_난이도별로_집계한다() throws Exception {
+        // given
+        User me = userRepository.save(new User("stats@corte.com", "password", "me"));
+        User other = userRepository.save(new User("other@corte.com", "password", "other"));
+        Difficulty silver = Difficulty.SILVER_3;
+        Difficulty gold = Difficulty.GOLD_5;
+        Difficulty unrated = Difficulty.UNRATED;
+
+        Problem solved = saveProblem("Graph", silver);
+        saveJob(solved, me, true, Verdict.WRONG_ANSWER);
+        saveJob(solved, me, true, Verdict.ACCEPTED);
+        saveJob(solved, me, true, Verdict.ACCEPTED);
+
+        for (Verdict verdict : new Verdict[]{Verdict.WRONG_ANSWER, Verdict.COMPILE_ERROR,
+            Verdict.RUNTIME_ERROR, Verdict.TIME_LIMIT, Verdict.MEMORY_LIMIT, Verdict.OUTPUT_LIMIT}) {
+            saveJob(saveProblem("Graph", silver), me, true, verdict);
+        }
+
+        Problem noRecord = saveProblem("Graph", gold);
+        saveJob(noRecord, other, true, Verdict.ACCEPTED);
+        saveJob(noRecord, me, false, Verdict.ACCEPTED);
+        for (Verdict verdict : new Verdict[]{Verdict.QUEUED, Verdict.RUNNING,
+            Verdict.SYSTEM_ERROR, Verdict.CANCELLED, Verdict.FINISHED}) {
+            saveJob(noRecord, me, true, verdict);
+        }
+
+        saveProblem("Graph", null);
+        Problem recategorized = saveProblem("Graph", gold);
+        saveJob(recategorized, me, true, Verdict.ACCEPTED);
+        recategorized = problemRepository.findById(recategorized.getId()).orElseThrow();
+        recategorized.update(null, null, "Implementation", null, null, null);
+        recategorized.updateDifficulty(unrated);
+        String token = "Bearer " + jwtProvider.createAccessToken(me.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/users/me/stats").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.categoryDifficulties.length()").value(4))
+            .andExpect(jsonPath("$.categoryDifficulties[0].category").value("Graph"))
+            .andExpect(jsonPath("$.categoryDifficulties[0].difficulty").value("SILVER_3"))
+            .andExpect(jsonPath("$.categoryDifficulties[0].attemptedCount").value(7))
+            .andExpect(jsonPath("$.categoryDifficulties[0].solvedCount").value(1))
+            .andExpect(jsonPath("$.categoryDifficulties[1].category").value("Graph"))
+            .andExpect(jsonPath("$.categoryDifficulties[1].difficulty").value("GOLD_5"))
+            .andExpect(jsonPath("$.categoryDifficulties[1].attemptedCount").value(0))
+            .andExpect(jsonPath("$.categoryDifficulties[1].solvedCount").value(0))
+            .andExpect(jsonPath("$.categoryDifficulties[2].category").value("Graph"))
+            .andExpect(jsonPath("$.categoryDifficulties[2].difficulty").value("UNRATED"))
+            .andExpect(jsonPath("$.categoryDifficulties[2].attemptedCount").value(0))
+            .andExpect(jsonPath("$.categoryDifficulties[2].solvedCount").value(0))
+            .andExpect(jsonPath("$.categoryDifficulties[3].category").value("Implementation"))
+            .andExpect(jsonPath("$.categoryDifficulties[3].difficulty").value("UNRATED"))
+            .andExpect(jsonPath("$.categoryDifficulties[3].attemptedCount").value(1))
+            .andExpect(jsonPath("$.categoryDifficulties[3].solvedCount").value(1));
+    }
+
+    @Test
+    void 등록된_문제가_없으면_빈_통계를_준다() throws Exception {
+        // given
+        User me = userRepository.save(new User("empty@corte.com", "password", "me"));
+        String token = "Bearer " + jwtProvider.createAccessToken(me.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/users/me/stats").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.categoryDifficulties.length()").value(0));
+    }
+
+    @Test
+    void 카테고리_이름의_대소문자가_다르면_따로_집계한다() throws Exception {
+        // given
+        User me = userRepository.save(new User("case@corte.com", "password", "me"));
+        saveJob(saveProblem("Graph", Difficulty.SILVER_3), me, true, Verdict.ACCEPTED);
+        saveProblem("graph", Difficulty.SILVER_3);
+        String token = "Bearer " + jwtProvider.createAccessToken(me.getId());
+
+        // when & then
+        mockMvc.perform(get("/api/users/me/stats").header(HttpHeaders.AUTHORIZATION, token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.categoryDifficulties.length()").value(2))
+            .andExpect(jsonPath("$.categoryDifficulties[0].category").value("Graph"))
+            .andExpect(jsonPath("$.categoryDifficulties[0].solvedCount").value(1))
+            .andExpect(jsonPath("$.categoryDifficulties[1].category").value("graph"))
+            .andExpect(jsonPath("$.categoryDifficulties[1].solvedCount").value(0));
+    }
+
+    private Problem saveProblem(String category, Difficulty difficulty) {
+        return problemRepository.save(Problem.builder()
+            .title("통계 문제")
+            .description("설명")
+            .category(category)
+            .difficulty(difficulty)
+            .memoryLimitMb(256)
+            .timeLimitMs(1000)
+            .build());
+    }
+
+    private void saveJob(Problem problem, User author, boolean submission, Verdict verdict) {
+        JudgeJob job = judgeJobRepository.save(JudgeJob.builder()
+            .problem(problem)
+            .author(author)
+            .submission(submission)
+            .language(Language.PYTHON)
+            .code("print(1)")
+            .snapshot("")
+            .tokenHash("hash")
+            .totalCount(1)
+            .build());
+        judgeJobRepository.finish(job.getId(), Verdict.QUEUED, verdict, 0, 10, "", LocalDateTime.now());
+    }
+
 }
