@@ -18,7 +18,7 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
     Optional<PostComment> findWithAuthorById(Long id);
 
     // 작성자는 join으로 한 번에 가져온다 (N+1 방지)
-    @Query(value = "select c.id as id, c.content as content, u.nickname as authorNickname, "
+    @Query(value = "select c.id as id, c.content as content, u.nickname as authorNickname, u.id as authorId, "
         + "c.createdAt as createdAt, c.updatedAt as updatedAt "
         + "from PostComment c join c.author u where c.post.id = :postId",
         countQuery = "select count(c) from PostComment c where c.post.id = :postId")
@@ -32,6 +32,7 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
         Long getId();
         String getContent();
         String getAuthorNickname();
+        Long getAuthorId();
         LocalDateTime getCreatedAt();
         LocalDateTime getUpdatedAt();
     }
