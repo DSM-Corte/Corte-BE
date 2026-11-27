@@ -61,6 +61,28 @@ class LeaderboardControllerTests {
     }
 
     @Test
+    void 미제출_회원도_자신의_전체_순위를_조회한다() throws Exception {
+        // given
+        User newcomer = saveUser("newcomer");
+
+        // when & then
+        mockMvc.perform(get("/api/leaderboard/me").header(HttpHeaders.AUTHORIZATION, bearer(newcomer)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.userId").value(newcomer.getId()))
+            .andExpect(jsonPath("$.rank").value(2))
+            .andExpect(jsonPath("$.score").value(0))
+            .andExpect(jsonPath("$.tier").value("BRONZE_3"));
+    }
+
+    @Test
+    void 내_순위는_로그인이_필요하다() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/leaderboard/me"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("A001"));
+    }
+
+    @Test
     void 토큰_없이도_리더보드를_조회한다() throws Exception {
         // when & then
         mockMvc.perform(get("/api/leaderboard"))

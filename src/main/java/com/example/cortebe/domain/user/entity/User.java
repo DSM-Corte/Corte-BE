@@ -2,6 +2,7 @@ package com.example.cortebe.domain.user.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -13,11 +14,16 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 import org.hibernate.annotations.DynamicUpdate;
 
 // 모드와 강조색을 동시에 따로 바꿔도 서로의 변경을 덮어쓰지 않도록 바뀐 컬럼만 UPDATE한다
 @DynamicUpdate
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -53,6 +59,10 @@ public class User {
 
     @Column(length = 100)
     private String githubRepo;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime joinedAt;
 
     @Builder
     public User(String email, String password, String nickname) {

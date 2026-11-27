@@ -20,6 +20,11 @@ public class LeaderboardController {
 
     private final LeaderboardService leaderboardService;
 
+    @GetMapping("/me")
+    public LeaderboardPageResponse.Entry getMine(@AuthenticationPrincipal Long userId) {
+        return leaderboardService.getMine(userId);
+    }
+
     // 공개 경로라 토큰이 없으면 userId는 null이다
     @GetMapping
     public LeaderboardPageResponse list(@AuthenticationPrincipal Long userId,
