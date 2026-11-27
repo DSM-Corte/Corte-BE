@@ -21,3 +21,8 @@
 ## 테스트 대응
 | 명세 항목 | 테스트 | 레드 증거 |
 | --- | --- | --- |
+| 게시글 작성(201)·상세·수정 응답에 `authorId` == 작성자 ID, `author` 닉네임 유지 | `PostControllerTests#게시글_작성_상세_수정_응답에_작성자_ID를_주고_목록에는_주지_않는다` | `No value at JSON path "$.authorId"` |
+| 게시글 목록 요약에는 `authorId` 없음(범위 밖 유지) | `PostControllerTests#게시글_작성_상세_수정_응답에_작성자_ID를_주고_목록에는_주지_않는다` | 해당 없음: 기존 동작 유지 확인이라 구현 전에도 통과 |
+| 댓글 작성(201)·목록·수정 응답에 `authorId` == 작성자 ID, `author` 닉네임 유지 | `PostCommentControllerTests#댓글_작성_목록_수정_응답에_작성자_ID를_준다` | `No value at JSON path "$.authorId"` |
+| 댓글 목록 projection에 작성자 ID(추가 조회 없음) | `PostCommentControllerTests#댓글_작성_목록_수정_응답에_작성자_ID를_준다`(H2에서 실제 `findSummaries` 실행) | 위와 같음 |
+| 오류·트랜잭션·동시성 | 해당 없음: 응답 필드 추가만 있고 새 오류·쓰기 경로 없음 | 해당 없음 |

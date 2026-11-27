@@ -42,12 +42,15 @@ class PostControllerTests {
     @Autowired
     private JwtProvider jwtProvider;
 
+    private Long authorId;
     private String authorToken;
     private String otherToken;
 
     @BeforeEach
     void setUp() {
-        authorToken = bearer(userRepository.save(User.builder().email("a@corte.com").password("password").nickname("사용자1").build()));
+        User author = userRepository.save(User.builder().email("a@corte.com").password("password").nickname("사용자1").build());
+        authorId = author.getId();
+        authorToken = bearer(author);
         otherToken = bearer(userRepository.save(User.builder().email("b@corte.com").password("password").nickname("사용자2").build()));
     }
 
@@ -115,5 +118,28 @@ class PostControllerTests {
         mockMvc.perform(post("/api/posts")
                 .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 게시글_작성_상세_수정_응답에_작성자_ID를_주고_목록에는_주지_않는다() throws Exception {
+        String location = mockMvc.perform(post("/api/posts").header(HttpHeaders.AUTHORIZATION, authorToken)
+                .contentType(MediaType.APPLICATION_JSON).content(CREATE_REQUEST))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.authorId").value(authorId))
+            .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(get(location).header(HttpHeaders.AUTHORIZATION, otherToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.authorId").value(authorId))
+            .andExpect(jsonPath("$.author").value("사용자1"));
+
+        mockMvc.perform(patch(location).header(HttpHeaders.AUTHORIZATION, authorToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\": \"수정한 제목\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.authorId").value(authorId));
+
+        mockMvc.perform(get("/api/posts").header(HttpHeaders.AUTHORIZATION, otherToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].authorId").doesNotExist());
     }
 }
