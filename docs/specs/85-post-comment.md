@@ -7,10 +7,10 @@
 - 목적: 로그인한 회원이 게시글에 댓글로 의견을 주고받는다. 코드 리뷰 댓글(`domain/review`)과는 별개다
 - API (모두 로그인 필요, `/api/posts/{postId}/comments`)
   - `POST`: 요청 `{content}`, 201 + `Location` + 댓글 응답
-  - `GET`: `?page&size`(기본 0/20, 최대 100), 200 + `{content[{id, author, content, createdAt, updatedAt}], page, size, totalElements, totalPages}`
+  - `GET`: `?page&size`(기본 0/20, 최대 100), 200 + `{content[{id, author, authorId, content, createdAt, updatedAt}], page, size, totalElements, totalPages}`
   - `PATCH /{commentId}`: 요청 `{content}`, 200 + 댓글 응답, 작성자만
   - `DELETE /{commentId}`: 204, 작성자만
-  - 댓글 응답: `{id, content, author(닉네임), createdAt, updatedAt}`
+  - 댓글 응답: `{id, content, author(닉네임), authorId(작성자 ID, #92), createdAt, updatedAt}`
 - 데이터: `PostComment`(`post_comments`): `id`, `post`(ManyToOne LAZY, `post_id`), `author`(`author_id`), `content`(length 500), `createdAt`, `updatedAt`.
   인덱스 `idx_post_comments_post_id`. 새 테이블이라 기존 데이터 영향 없음
 - 규칙

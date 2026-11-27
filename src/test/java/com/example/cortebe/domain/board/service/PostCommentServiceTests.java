@@ -112,6 +112,7 @@ class PostCommentServiceTests {
             public Long getId() { return 5L; }
             public String getContent() { return "댓글"; }
             public String getAuthorNickname() { return "사용자1"; }
+            public Long getAuthorId() { return 1L; }
             public LocalDateTime getCreatedAt() { return LocalDateTime.of(2026, 11, 25, 10, 0); }
             public LocalDateTime getUpdatedAt() { return LocalDateTime.of(2026, 11, 25, 10, 0); }
         };

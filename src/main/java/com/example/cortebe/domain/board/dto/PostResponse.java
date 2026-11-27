@@ -11,6 +11,7 @@ public record PostResponse(
     String title,
     String content,
     String author,
+    Long authorId,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
@@ -20,6 +21,7 @@ public record PostResponse(
             .title(post.getTitle())
             .content(post.getContent())
             .author(post.getAuthor().getNickname())
+            .authorId(post.getAuthor().getId())
             .createdAt(post.getCreatedAt())
             .updatedAt(post.getUpdatedAt())
             .build();

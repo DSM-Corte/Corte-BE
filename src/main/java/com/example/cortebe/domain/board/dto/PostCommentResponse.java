@@ -10,6 +10,7 @@ public record PostCommentResponse(
     Long id,
     String content,
     String author,
+    Long authorId,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
@@ -18,6 +19,7 @@ public record PostCommentResponse(
             .id(comment.getId())
             .content(comment.getContent())
             .author(comment.getAuthor().getNickname())
+            .authorId(comment.getAuthor().getId())
             .createdAt(comment.getCreatedAt())
             .updatedAt(comment.getUpdatedAt())
             .build();

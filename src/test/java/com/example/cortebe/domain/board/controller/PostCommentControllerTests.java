@@ -211,4 +211,23 @@ class PostCommentControllerTests {
 
         assertThat(postCommentRepository.count()).isZero();
     }
+
+    @Test
+    void 댓글_작성_목록_수정_응답에_작성자_ID를_준다() throws Exception {
+        String location = mockMvc.perform(post(commentsUrl).header(HttpHeaders.AUTHORIZATION, authorToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\": \"첫 댓글\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.authorId").value(author.getId()))
+            .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(get(commentsUrl).header(HttpHeaders.AUTHORIZATION, otherToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].authorId").value(author.getId()))
+            .andExpect(jsonPath("$.content[0].author").value("사용자1"));
+
+        mockMvc.perform(patch(location).header(HttpHeaders.AUTHORIZATION, authorToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\": \"수정한 댓글\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.authorId").value(author.getId()));
+    }
 }

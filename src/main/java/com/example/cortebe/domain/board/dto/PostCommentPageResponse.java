@@ -18,9 +18,10 @@ public record PostCommentPageResponse(
             comments.getNumber(), comments.getSize(), comments.getTotalElements(), comments.getTotalPages());
     }
 
-    public record Summary(Long id, String content, String author, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public record Summary(Long id, String content, String author, Long authorId,
+        LocalDateTime createdAt, LocalDateTime updatedAt) {
         public static Summary from(PostCommentRepository.Summary comment) {
-            return new Summary(comment.getId(), comment.getContent(), comment.getAuthorNickname(),
+            return new Summary(comment.getId(), comment.getContent(), comment.getAuthorNickname(), comment.getAuthorId(),
                 comment.getCreatedAt(), comment.getUpdatedAt());
         }
     }
