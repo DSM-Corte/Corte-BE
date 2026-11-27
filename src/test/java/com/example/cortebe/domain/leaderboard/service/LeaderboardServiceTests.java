@@ -8,7 +8,9 @@ import com.example.cortebe.domain.leaderboard.dto.LeaderboardPageResponse.Entry;
 import com.example.cortebe.domain.leaderboard.dto.LeaderboardSearch;
 import com.example.cortebe.domain.leaderboard.dto.LeaderboardSort;
 import com.example.cortebe.domain.problem.entity.Difficulty;
+import com.example.cortebe.domain.user.entity.User;
 import com.example.cortebe.domain.user.entity.UserTier;
+import com.example.cortebe.domain.user.repository.UserRepository;
 import com.example.cortebe.domain.user.repository.ProblemRewardRepository;
 import com.example.cortebe.domain.user.repository.ProblemRewardRepository.RewardRow;
 import com.example.cortebe.global.error.exception.InvalidInputException;
@@ -44,6 +46,9 @@ class LeaderboardServiceTests {
 
     @Mock
     private ProblemRewardRepository problemRewardRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private LeaderboardService leaderboardService;
@@ -129,7 +134,7 @@ class LeaderboardServiceTests {
     }
 
     @Test
-    void 정답_문제가_없는_회원은_순위표에_넣지_않는다() {
+    void 오답만_제출한_회원도_순위표에_포함한다() {
         // given
         rows(
             accepted(1L, "민수", 10L, Difficulty.BRONZE_5, 0),
@@ -140,8 +145,8 @@ class LeaderboardServiceTests {
         LeaderboardPageResponse response = leaderboardService.list(null, search().build());
 
         // then
-        assertThat(response.content()).extracting(Entry::userId).containsExactly(1L);
-        assertThat(response.totalElements()).isEqualTo(1);
+        assertThat(response.content()).extracting(Entry::userId).containsExactly(1L, 2L);
+        assertThat(response.totalElements()).isEqualTo(2);
     }
 
     @Test
@@ -224,8 +229,15 @@ class LeaderboardServiceTests {
     }
 
     @Test
-    void 순위는_점수_정답_수_회원_ID_순으로_매긴다() {
+    void 순위는_점수_가입_시각_회원_ID_순으로_매긴다() {
         // given
+        List<User> members = List.of(
+            member(1L, null),
+            member(2L, LocalDateTime.of(2026, 11, 26, 10, 0)),
+            member(3L, LocalDateTime.of(2026, 11, 25, 10, 0)),
+            member(5L, null)
+        );
+        given(userRepository.findAll()).willReturn(members);
         rows(
             accepted(3L, "다", 10L, Difficulty.SILVER_4, 0),  // 20점, 1문제
             accepted(1L, "가", 10L, Difficulty.BRONZE_5, 0),  // 20점, 2문제
@@ -239,7 +251,17 @@ class LeaderboardServiceTests {
 
         // then
         assertThat(response.content()).extracting(Entry::rank, Entry::userId)
-            .containsExactly(tuple(1, 4L), tuple(2, 1L), tuple(3, 2L), tuple(4, 3L));
+            .containsExactly(tuple(1, 4L), tuple(2, 1L), tuple(3, 3L), tuple(4, 2L), tuple(5, 5L));
+    }
+
+    private User member(long id, LocalDateTime joinedAt) {
+        User user = org.mockito.Mockito.mock(User.class);
+        given(user.getId()).willReturn(id);
+        given(user.getNickname()).willReturn("회원 " + id);
+        if (joinedAt != null) {
+            given(user.getJoinedAt()).willReturn(joinedAt);
+        }
+        return user;
     }
 
     @Test

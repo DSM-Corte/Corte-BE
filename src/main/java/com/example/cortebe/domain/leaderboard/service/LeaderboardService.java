@@ -9,6 +9,8 @@ import com.example.cortebe.domain.leaderboard.dto.LeaderboardSearch;
 import com.example.cortebe.domain.leaderboard.dto.LeaderboardSort;
 import com.example.cortebe.domain.problem.entity.Difficulty;
 import com.example.cortebe.domain.user.entity.UserTier;
+import com.example.cortebe.domain.user.repository.UserRepository;
+import com.example.cortebe.domain.user.exception.UserNotFoundException;
 import com.example.cortebe.domain.user.repository.ProblemRewardRepository;
 import com.example.cortebe.domain.user.repository.ProblemRewardRepository.RewardRow;
 import com.example.cortebe.domain.user.service.UserTierService;
@@ -47,11 +49,22 @@ public class LeaderboardService {
     private final JudgeJobRepository judgeJobRepository;
     private final ProblemRewardRepository problemRewardRepository;
 
-    public LeaderboardPageResponse list(Long viewerId, LeaderboardSearch search) {
-        validate(search);
+    private final UserRepository userRepository;
+
+    public Entry getMine(Long viewerId) {
+        return rank(viewerId).stream().filter(Entry::me).findFirst()
+            .orElseThrow(UserNotFoundException::new);
+    }
+
+    private List<Entry> rank(Long viewerId) {
 
         // 1. 회원마다 제출 기록을 모은다
         Map<Long, Player> players = new LinkedHashMap<>();
+        Map<Long, LocalDateTime> joinedAt = new HashMap<>();
+        for (var user : userRepository.findAll()) {
+            players.put(user.getId(), new Player(user.getId(), user.getNickname()));
+            joinedAt.put(user.getId(), user.getJoinedAt());
+        }
         for (LeaderboardRow row : judgeJobRepository.findLeaderboardRows(JUDGED_VERDICTS)) {
             Player player = players.computeIfAbsent(row.getUserId(), id -> new Player(id, row.getNickname()));
             player.add(row);
@@ -65,23 +78,28 @@ public class LeaderboardService {
             }
         }
 
-        // 3. 정답 문제가 있는 회원만 순위표 항목으로 만든다
+        // 3. 제출 기록이 없는 회원도 순위표에 포함한다
         LocalDate today = LocalDate.now(KOREA);
         List<Entry> ranked = new ArrayList<>();
         for (Player player : players.values()) {
-            if (!player.solvedProblems.isEmpty()) {
-                ranked.add(player.toEntry(today, viewerId));
-            }
+            ranked.add(player.toEntry(today, viewerId));
         }
 
-        // 4. 점수 → 정답 수 → 회원 ID 순으로 전체 순위를 매긴다
+        // 4. 점수 → 가입 시각 → 회원 ID 순으로 전체 순위를 매긴다
         ranked.sort(Comparator.comparingLong(Entry::score).reversed()
-            .thenComparing(Comparator.comparingLong(Entry::solvedCount).reversed())
+            .thenComparing(entry -> joinedAt.get(entry.userId()), Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(Entry::userId));
         List<Entry> withRank = new ArrayList<>();
         for (int i = 0; i < ranked.size(); i++) {
             withRank.add(withRank(ranked.get(i), i + 1));
         }
+
+        return withRank;
+    }
+
+    public LeaderboardPageResponse list(Long viewerId, LeaderboardSearch search) {
+        validate(search);
+        List<Entry> withRank = rank(viewerId);
 
         // 5. 검색·필터는 순위를 매긴 뒤에 걸어서 순위 번호가 전체 기준을 유지한다
         List<Entry> filtered = new ArrayList<>();
@@ -221,7 +239,7 @@ public class LeaderboardService {
                 .score(score)
                 .solvedCount(solvedProblems.size())
                 .submissionCount(submissions)
-                .accuracy(Math.round(accepted * 1000.0 / submissions) / 10.0)
+                .accuracy(submissions == 0 ? 0 : Math.round(accepted * 1000.0 / submissions) / 10.0)
                 .streak(streak(today))
                 .me(userId.equals(viewerId))
                 .build();
